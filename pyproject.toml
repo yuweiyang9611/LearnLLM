@@ -18,7 +18,7 @@ dependencies = [
 [project.optional-dependencies]
 docs = [
     "reportlab==4.4.9",
-    "pypdf==6.13.3",
+    "pypdf==6.15.0",
 ]
 
 [tool.setuptools]
