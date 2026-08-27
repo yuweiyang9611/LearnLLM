@@ -13,6 +13,7 @@ dist/
 checkpoints/
 outputs/
 runs/
+/site/
 
 # Local secrets and credentials
 .env

@@ -1,0 +1,115 @@
+site_name: LearnLLM
+site_description: 从零理解并亲手实现大语言模型的中文课程与实验
+site_author: LearnLLM contributors
+site_url: https://yuweiyang9611.github.io/LearnLLM/
+repo_url: https://github.com/yuweiyang9611/LearnLLM
+repo_name: yuweiyang9611/LearnLLM
+edit_uri: edit/main/docs/
+copyright: 课程文档 CC BY-NC-SA 4.0 · 原创代码 MIT
+
+theme:
+  name: material
+  language: zh
+  custom_dir: overrides
+  font: false
+  icon:
+    logo: material/head-snowflake-outline
+    repo: fontawesome/brands/github
+  features:
+    - content.code.copy
+    - content.code.select
+    - navigation.footer
+    - navigation.indexes
+    - navigation.sections
+    - navigation.tabs
+    - navigation.top
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: 切换到深色模式
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: 切换到浅色模式
+
+nav:
+  - 首页: index.md
+  - 开始学习:
+      - 总学习指导: 总学习指导.md
+      - 00 学习路线与环境: 00_学习路线与环境.md
+  - 核心原理:
+      - 01 数学与 PyTorch 基础: 01_数学与PyTorch基础.md
+      - 02 Tokenizer 与语言模型: 02_Tokenizer与语言模型.md
+      - 03 注意力与 Transformer: 03_注意力与Transformer.md
+  - 训练与对齐:
+      - 04 模型家族与训练生命周期: 04_模型家族与训练生命周期.md
+      - 05 迷你 GPT 预训练与生成: 05_迷你GPT预训练与生成.md
+      - 06 SFT、LoRA 与对齐: 06_SFT_LoRA与对齐.md
+  - 应用与项目:
+      - 07 评测、RAG 与 Agent: 07_评测_RAG与Agent.md
+      - 08 结课项目: 08_结课项目.md
+      - 实验记录模板: 实验记录模板.md
+  - 参考:
+      - PDF 章节对照与勘误: PDF_章节对照与勘误.md
+      - v0.1.0 发布说明: RELEASE_v0.1.0.md
+
+plugins:
+  - search:
+      lang:
+        - zh
+        - en
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      permalink_title: 链接到本节
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.snippets:
+      base_path:
+        - .
+      check_paths: true
+  - pymdownx.superfences
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/accessibility.js
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/yuweiyang9611/LearnLLM
+      name: LearnLLM on GitHub
+
+strict: true

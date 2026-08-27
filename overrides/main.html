@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+  {{ super() }}
+  {% set social_title = page.meta.get("title", page.title) if page else config.site_name %}
+  {% set social_description = page.meta.get("description", config.site_description) if page else config.site_description %}
+  {% set full_social_title = social_title if not page or page.is_homepage else social_title ~ " · " ~ config.site_name %}
+  {% set social_url = page.canonical_url if page else config.site_url %}
+  <meta property="og:type" content="website" />
+  {% if not page %}
+    <meta name="robots" content="noindex, nofollow" />
+  {% elif page.meta and page.meta.robots %}
+    <meta name="robots" content="{{ page.meta.robots | e }}" />
+  {% else %}
+    <meta name="robots" content="index, follow" />
+  {% endif %}
+  <meta property="og:locale" content="zh_CN" />
+  <meta property="og:site_name" content="{{ config.site_name | e }}" />
+  <meta property="og:title" content="{{ full_social_title | e }}" />
+  <meta property="og:description" content="{{ social_description | e }}" />
+  <meta property="og:url" content="{{ social_url | e }}" />
+  <meta property="og:image" content="{{ config.site_url }}assets/images/learnllm-social.png" />
+  <meta property="og:image:secure_url" content="{{ config.site_url }}assets/images/learnllm-social.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1672" />
+  <meta property="og:image:height" content="941" />
+  <meta property="og:image:alt" content="LearnLLM：从零理解并实现大语言模型" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="{{ full_social_title | e }}" />
+  <meta name="twitter:description" content="{{ social_description | e }}" />
+  <meta name="twitter:image" content="{{ config.site_url }}assets/images/learnllm-social.png" />
+  <meta name="twitter:image:alt" content="LearnLLM：从零理解并实现大语言模型" />
+{% endblock %}
