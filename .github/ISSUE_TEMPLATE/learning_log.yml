@@ -1,0 +1,46 @@
+name: 每周学习记录
+description: 用问题、预测、结果和下一步记录一次学习迭代
+title: "[Week] "
+labels: ["learning-log"]
+body:
+  - type: dropdown
+    id: week
+    attributes:
+      label: 学习周
+      options:
+        - Week 1 - 环境、Python、张量与矩阵
+        - Week 2 - Tokenizer、Bigram 与困惑度
+        - Week 3 - Q/K/V、缩放与因果 mask
+        - Week 4 - 多头、残差、Norm 与 MLP
+        - Week 5 - 模型家族与训练生命周期
+        - Week 6 - TinyGPT 预训练与生成
+        - Week 7 - SFT、LoRA 与评测
+        - Week 8 - RAG、Agent 与结课项目
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: 本周要回答的问题
+    validations:
+      required: true
+  - type: textarea
+    id: prediction
+    attributes:
+      label: 运行前预测
+      description: 写出 shape、趋势或应保持的不变量。
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 结果与证据
+      description: 粘贴精简指标、测试结果和失败案例，不要只写“运行成功”。
+    validations:
+      required: true
+  - type: textarea
+    id: explanation
+    attributes:
+      label: 自己的解释与下一步
+    validations:
+      required: true

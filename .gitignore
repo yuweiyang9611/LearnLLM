@@ -1,0 +1,37 @@
+# Local Python environment
+.venv/
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# Generated learning artifacts
+checkpoints/
+outputs/
+runs/
+
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+
+# Temporary PDF inspection files
+tmp/
+
+# IDE / OS files
+.idea/
+.vscode/
+.agents/
+.codex/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,40 @@
+name: 实验或文档问题
+description: 报告可复现的代码、环境或讲义错误
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: 请先运行 `powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1`，并移除任何密钥或私人路径。
+  - type: input
+    id: lesson
+    attributes:
+      label: 课程或实验
+      placeholder: 例如 05 Transformer Block
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期的不变量或结果
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果与完整错误信息
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 最小复现步骤
+      placeholder: 包含命令、只改动的变量和随机种子
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Python、PyTorch 与操作系统版本
+    validations:
+      required: true

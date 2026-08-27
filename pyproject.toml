@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools==78.1.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "learn-llm-from-zero"
+version = "0.1.0"
+description = "从零理解并动手实现 LLM 的中文学习实验"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = "MIT"
+license-files = ["LICENSE-CODE"]
+dependencies = [
+    "numpy==2.4.6",
+    "torch==2.13.0+cpu",
+]
+
+[project.optional-dependencies]
+docs = [
+    "reportlab==4.4.9",
+    "pypdf==6.13.3",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

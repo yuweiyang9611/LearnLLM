@@ -1,0 +1,7 @@
+{
+  "question": "Does sqrt(d_k) scaling stabilize attention sharpness as head dimension grows?",
+  "head_dimensions": [4, 16, 64, 256],
+  "tokens": 8,
+  "trials": 256,
+  "seed": 2026
+}

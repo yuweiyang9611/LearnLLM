@@ -1,0 +1,24 @@
+LearnLLM dual-license notice
+============================
+
+This repository contains software and educational material under different
+licenses. The license is determined by the type of material:
+
+1. Original software source code is licensed under the MIT License. This
+   includes Python and PowerShell source files, tests, CI configuration, and
+   project packaging configuration. See LICENSE-CODE.
+
+2. Course documentation and generated publications are licensed under the
+   Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+   license (CC BY-NC-SA 4.0). This includes Markdown lessons, learning guides,
+   experiment-report templates, included educational datasets, and generated
+   PDF study guides. See LICENSE-DOCS.
+
+3. Third-party material remains under its original license. See
+   ATTRIBUTION.md for the Happy-LLM reference, source, license, and a summary of
+   the changes made in this project.
+
+If a file contains an explicit license notice, that notice takes precedence.
+Otherwise, use the categories above. No license is granted for third-party
+trademarks, logos, or material that the repository contributors do not have the
+right to license.

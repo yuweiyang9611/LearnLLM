@@ -1,0 +1,173 @@
+# 05 迷你 GPT：预训练与生成
+
+对应 PDF：物理页 74-116。原资料直接进入 LLaMA2 组件和较大数据，本项目把配置缩到约几十万参数，并使用仓库内置语料，使你能在 CPU 上观察完整训练闭环。
+
+## 本章成果
+
+- 训练 `TinyGPT`，看到训练 loss 下降。
+- 理解 x/y 右移、batch、反向传播、梯度裁剪和 checkpoint。
+- 用 greedy、temperature、top-k 生成文本。
+- 解释玩具模型为何会“像语料”，却没有通用语言能力。
+
+## 1. 先认识配置
+
+默认教学配置：
+
+| 参数 | 值 | 意义 |
+|---|---:|---|
+| `block_size` | 不超过 48 | 模型一次可读的最长 token 数 |
+| `n_layer` | 2 | Decoder Block 数 |
+| `n_head` | 4 | 注意力头数 |
+| `n_embd` | 64 | 每个位置的隐藏维度 |
+| `vocab_size` | 由本地语料决定 | 输出分类数量 |
+| `dropout` | 0 | 小实验先消除随机影响 |
+
+参数量远小于真实 LLM。缩小不会改变 causal attention、残差、MLP、交叉熵和生成循环的逻辑。
+
+## 2. 训练前先做三项预测
+
+1. 初始模型接近均匀猜测时，loss 大约是 `ln(vocab_size)`。
+2. 训练 loss 应下降；验证 loss 不保证一直下降。
+3. 小语料上的生成会重复、背诵和断句异常。
+
+把预测写进实验记录，再运行：
+
+```powershell
+# 约 40 步，只验证管线
+.\.venv\Scripts\python.exe .\experiments\06_train_tiny_gpt.py --quick
+
+# 默认 200 步，观察更清楚的趋势
+.\.venv\Scripts\python.exe .\experiments\06_train_tiny_gpt.py
+```
+
+预期输出模式：
+
+```text
+参数量: ...
+均匀随机理论 loss ln(V): ...
+初始 train/val loss: ... / ...
+step    1 | train ... | val ...
+...
+PASS: loss 明显下降，checkpoint 与训练指标已保存。
+```
+
+具体浮点数会因 PyTorch 版本和硬件略有差异；趋势和断言才是验收标准。
+
+## 3. 一步训练逐行解释
+
+```python
+x, y = sample_language_model_batch(...)
+optimizer.zero_grad(set_to_none=True)
+logits, loss = model(x, y)
+loss.backward()
+torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+optimizer.step()
+```
+
+### `x, y`
+
+从连续 token 中取长度 `T+1` 的窗口。`x` 是前 `T` 个，`y` 是后 `T` 个，所以 `y[t]` 正是 `x[t]` 的下一个 token。
+
+### `zero_grad`
+
+PyTorch 默认累加梯度。不清零就会把多个 step 的梯度叠在一起；梯度累积是可用技术，但必须有意控制。
+
+### `forward + loss`
+
+模型输出 `[B,T,V]`，每个位置有 V 个 logits。交叉熵选择目标 token 的负对数概率并求平均。
+
+### `backward`
+
+自动求导沿计算图计算每个可训练参数的梯度。
+
+### `clip_grad_norm_`
+
+当总梯度范数过大时按比例缩小，降低训练突然发散的风险。它不是修复所有训练问题的万能开关。
+
+### `optimizer.step`
+
+AdamW 根据梯度、动量统计和学习率更新参数。只有到这里权重才真正改变。
+
+## 4. 训练集与验证集
+
+本项目把语料前 90% 用于训练、后 10% 用于验证。
+
+- train loss 下降：模型越来越适合见过的训练窗口。
+- val loss 下降：对留出的同分布文本也有改善。
+- train 降而 val 升：过拟合信号。
+
+由于语料非常小且不是随机打散的独立样本，验证数值只能教学使用，不能当作严谨模型排行榜。
+
+## 5. Checkpoint 保存了什么
+
+`checkpoints/tiny_gpt.pt` 包含：
+
+- 模型参数 `model_state`。
+- 优化器状态，便于续训。
+- 当前 step。
+- 模型配置。
+- 字符 Tokenizer 状态。
+- 随机种子和语料相对路径。
+
+只保存权重却不保存配置和 Tokenizer，往往无法正确重建模型。Tokenizer id 映射一旦变化，即使 tensor shape 相同，语义也完全错位。
+
+## 6. 生成实验
+
+先训练，再运行：
+
+```powershell
+.\.venv\Scripts\python.exe .\experiments\07_generate.py --prompt "语言模型" --tokens 80
+```
+
+脚本比较三种策略：
+
+### Greedy
+
+\[
+x_{t+1}=\arg\max_i p_i
+\]
+
+优点是确定；缺点是容易陷入高概率重复，且无法探索次高概率的合理延续。
+
+### Temperature
+
+\[
+p_i=\operatorname{softmax}(z_i/\tau)
+\]
+
+- `τ < 1`：分布更尖锐，更保守。
+- `τ > 1`：分布更平，更随机。
+- Temperature 不修改模型权重，也不让事实更可靠。
+
+### Top-k
+
+只保留 k 个最大 logits，再归一化采样。它减少长尾低概率 token 造成的离题，但 k 太小会损失多样性。
+
+## 7. 单变量探索
+
+依次做，不要同时改：
+
+1. 固定 `top_k=20`，比较 temperature 0.5、1.0、1.5。
+2. 固定 temperature 1.0，比较 top-k 1、5、30。
+3. 固定所有参数，只换随机种子。
+4. 把 `block_size` 从 48 改 16，重新训练，观察局部长距离模式。
+5. 增大 `n_embd`，记录参数量和每步耗时，而不假设一定改善验证 loss。
+
+## 8. 常见故障
+
+| 现象 | 优先检查 |
+|---|---|
+| loss 不降 | y 是否右移；优化器是否包含参数；学习率；是否调用 `step()` |
+| loss 变 NaN | 学习率过大；输入/梯度是否有限；是否忘记缩放/裁剪 |
+| 生成提示 OOV | 提示字符是否出现在训练语料；Tokenizer 是否同 checkpoint |
+| 加载时报 shape mismatch | 配置与 checkpoint 是否一致 |
+| 输出乱码/重复 | 小语料和字符模型的预期局限；采样是否过热/过冷 |
+| 训练快但验证差 | 过拟合、切分偏差、语料太小 |
+
+## 9. 出门测
+
+1. 为什么 `logits[:, -1, :]` 可以用于生成下一个 token？
+2. `V=100` 时均匀预测的交叉熵约是多少？
+3. 为什么保存模型时必须一并保存 Tokenizer？
+4. 为什么“训练集 loss 很低”不能证明模型理解语言？
+
