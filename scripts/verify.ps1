@@ -67,8 +67,6 @@ Invoke-CheckedPython `
         (Join-Path $ProjectRoot "checkpoints\tiny_gpt.pt"),
         "--adapter",
         (Join-Path $ProjectRoot "checkpoints\tiny_gpt_lora_adapter.pt"),
-        "--prompt",
-        "为什么需要因果掩码？",
         "--tokens",
         "8"
     ) `
