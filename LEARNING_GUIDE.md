@@ -143,7 +143,7 @@ token ids [B,T]
 - 实验：`06_train_tiny_gpt.py`。
 - 先用 `--quick` 检查管线，再增加步数。
 - 验收：loss 比初始值明显下降；保存包含配置、权重和冻结 Tokenizer 的真实 base checkpoint；加载后输出一致。
-- 后续实验 07 和 10 都以 `checkpoints/tiny_gpt.pt` 为源，不得在微调阶段重建词表或位置嵌入。checkpoint 记录语料与两份指令数据的 SHA-256；修改数据、指令字符或窗口上限后，应回到实验 06 重新预训练。
+- 后续实验 07 和 10 都以 `checkpoints/tiny_gpt.pt` 为源，不得在微调阶段重建词表或位置嵌入。checkpoint 记录预训练语料、train/dev/test 指令文件及兼容数据视图的 SHA-256；修改数据、指令字符或窗口上限后，应回到实验 06 重新预训练。
 - 重要限制：在小语料上过拟合只证明训练管线工作，不证明模型理解世界。
 
 ### 阶段 7：自回归生成与评测
@@ -155,6 +155,7 @@ token ids [B,T]
 - Top-k：只在概率最高的 k 个候选中采样。
 - 实验：`07_generate.py`。
 - 验收：固定随机种子可复现；能解释采样策略没有增加模型知识。
+- 实验 10 生成 adapter 后，实验 07 也可用 `--base-checkpoint checkpoints/tiny_gpt.pt --adapter checkpoints/tiny_gpt_lora_adapter.pt` 在独立进程中严格恢复 LoRA 模型；loader 会先校验 artifact 版本、config、Tokenizer、SHA-256、targets 和 tensor 结构。
 
 ### 阶段 8：SFT、LoRA 和对齐
 
@@ -171,9 +172,11 @@ W = W_0 + \Delta W = W_0 + BA
 - 偏好对齐使用 chosen/rejected 或奖励信号改变输出偏好；不是简单的事实注入。
 - 实验：先运行 `06_train_tiny_gpt.py` 生成 base，再运行 `10_sft_tiny_gpt.py`；`08_lora.py` 是独立的 Linear 原理演示。
 - 实验 10 从同一 base 独立比较 pretrained base、random-init Full SFT、pretrained Full SFT 和 pretrained LoRA-SFT，而不是把 LoRA 接在 Full SFT 后面。各机制的学习率会单独打印并写入产物 metadata；这是起点与评测设置受控的机制对照，不是所有超参数相同的单变量实验。
+- 数据按 4/4/4 隔离：train 是四条 `seen`，dev 是四条 `paraphrase`，test 包含两条 `paraphrase` 与两条 `new_intent`。dev 用于选择训练配置；每个分支和 seed 的 test 只在训练完成后评一次，不能反复看 test 再调参。
 - 验收 SFT：prompt 与 padding label 都是 `-100`；训练 loss 下降；Full SFT 参数确实改变并保存完整模型权重 checkpoint（不含续训所需的 optimizer 状态）。
 - 验收 LoRA：基础权重逐元素不变；只有 A/B 可训练；注入前后输出一致；adapter-only 保存与恢复一致。
-- 比较时同时记录仅 SFT-heldout 的 assistant loss、原预训练语料 validation loss 的保持度/干扰代理、可训练/总参数量、耗时和 seen/heldout 生成，不用单一训练 loss 宣布某个分支“更好”。
+- 比较时同时记录 train/dev/test assistant loss、任务成功率、关键词准确率、格式准确率、原预训练语料 validation loss 的保持度/干扰代理、可训练/总参数量、耗时与生成案例。默认 seed 42/43/44；loss 与任务指标跨 seed 报告均值和总体标准差，参数量和耗时按 seed 保留。JSON manifest 保存逐样本、逐类别和运行环境，CSV 保存长格式训练历史。
+- 严格任务成功要求一条生成同时命中全部必要关键词并满足全部格式规则。这个 Tiny 字符模型得到 0% 严格成功率也可能是正确、应保留的失败结果；`new_intent` 不代表知识在预训练语料中从未出现，不能宣称未知知识泛化。
 
 ### 阶段 9：RAG、Agent 和系统评测
 
@@ -195,7 +198,7 @@ W = W_0 + \Delta W = W_0 + BA
 | 4 | 多头、残差、Norm、MLP | 实验 05；完成无未来泄漏测试 |
 | 5 | BERT/T5/GPT 与训练生命周期 | 模型家族对比图；CLM/SFT loss mask |
 | 6 | TinyGPT 预训练和生成 | 真实 base checkpoint、冻结 Tokenizer、loss 记录、三种采样结果 |
-| 7 | SFT、LoRA、评测 | 四分支对比；assistant-only mask；SFT-heldout/保持度代理；参数统计；完整模型权重与 LoRA adapter |
+| 7 | SFT、LoRA、评测 | 四分支对比；4/4/4 train/dev/test；三类任务指标与保持度代理；多 seed JSON/CSV；完整模型权重与 LoRA adapter |
 | 8 | RAG、Agent 与结课项目 | 检索/拒答/支持指标；Agent 轨迹；消融与失败案例 |
 
 每天 45-90 分钟即可。每周最后一次不学新概念，只做复述、测试和修复。

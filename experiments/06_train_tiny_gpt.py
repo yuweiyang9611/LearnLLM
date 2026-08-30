@@ -24,6 +24,15 @@ from learn_llm.training import (
 )
 
 
+INSTRUCTION_DATA_FILENAMES = (
+    "tiny_instructions.jsonl",
+    "tiny_instructions_dev.jsonl",
+    "tiny_instructions_test.jsonl",
+    # Compatibility view containing dev + test for learners on older commands.
+    "tiny_instructions_eval.jsonl",
+)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--steps", type=int, default=200, help="优化步数")
@@ -60,7 +69,7 @@ def required_instruction_characters() -> set[str]:
     """Return the frozen vocabulary needed by later SFT/evaluation stages."""
 
     characters: set[str] = set()
-    for filename in ("tiny_instructions.jsonl", "tiny_instructions_eval.jsonl"):
+    for filename in INSTRUCTION_DATA_FILENAMES:
         path = DATA_DIR / filename
         for line_number, line in enumerate(
             path.read_text(encoding="utf-8").splitlines(), 1
@@ -79,6 +88,25 @@ def required_instruction_characters() -> set[str]:
     return characters
 
 
+def required_instruction_block_size() -> int:
+    """Return the longest shifted SFT sequence used after pretraining."""
+
+    lengths: list[int] = []
+    for filename in INSTRUCTION_DATA_FILENAMES:
+        for line in (DATA_DIR / filename).read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            record = json.loads(line)
+            instruction = record.get("instruction")
+            response = record.get("response")
+            if not isinstance(instruction, str) or not isinstance(response, str):
+                raise ValueError(f"{filename} contains an invalid instruction row")
+            lengths.append(len(format_instruction_prompt(instruction) + response) - 1)
+    if not lengths:
+        raise ValueError("instruction datasets cannot be empty")
+    return max(lengths)
+
+
 def training_data_sha256() -> dict[str, str]:
     """Bind the base checkpoint to every data file used by later stages."""
 
@@ -86,11 +114,7 @@ def training_data_sha256() -> dict[str, str]:
         f"data/{filename}": hashlib.sha256(
             (DATA_DIR / filename).read_bytes()
         ).hexdigest()
-        for filename in (
-            "tiny_corpus.txt",
-            "tiny_instructions.jsonl",
-            "tiny_instructions_eval.jsonl",
-        )
+        for filename in ("tiny_corpus.txt", *INSTRUCTION_DATA_FILENAMES)
     }
 
 
@@ -151,7 +175,13 @@ def main() -> None:
             "预训练段没有覆盖后续指令词表字符："
             f"{missing!r}；请把自然词表桥接文本放在语料前 90%"
         )
-    block_size = min(48, len(validation_ids) - 1)
+    required_block_size = required_instruction_block_size()
+    block_size = max(48, required_block_size)
+    if len(validation_ids) <= block_size:
+        raise ValueError(
+            "validation corpus is too short for the longest SFT example: "
+            f"{len(validation_ids)} <= {block_size}"
+        )
     config = TinyGPTConfig(
         vocab_size=tokenizer.vocab_size,
         block_size=block_size,
@@ -212,8 +242,7 @@ def main() -> None:
             "tokenizer": tokenizer.state_dict(),
             "corpus": "data/tiny_corpus.txt",
             "instruction_vocabulary": [
-                "data/tiny_instructions.jsonl",
-                "data/tiny_instructions_eval.jsonl",
+                f"data/{filename}" for filename in INSTRUCTION_DATA_FILENAMES
             ],
             "data_sha256": training_data_sha256(),
             "seed": args.seed,

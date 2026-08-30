@@ -61,6 +61,19 @@ Invoke-CheckedPython `
     -Arguments @((Join-Path $ProjectRoot "experiments\10_sft_tiny_gpt.py"), "--quick") `
     -Description "TinyGPT SFT experiment"
 Invoke-CheckedPython `
+    -Arguments @(
+        (Join-Path $ProjectRoot "experiments\07_generate.py"),
+        "--base-checkpoint",
+        (Join-Path $ProjectRoot "checkpoints\tiny_gpt.pt"),
+        "--adapter",
+        (Join-Path $ProjectRoot "checkpoints\tiny_gpt_lora_adapter.pt"),
+        "--prompt",
+        "为什么需要因果掩码？",
+        "--tokens",
+        "8"
+    ) `
+    -Description "Independent LoRA adapter inference"
+Invoke-CheckedPython `
     -Arguments @((Join-Path $ProjectRoot "experiments\11_local_agent.py")) `
     -Description "Local Agent experiment"
 Invoke-CheckedPython `

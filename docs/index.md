@@ -20,7 +20,7 @@ LearnLLM 是一套面向初学者的中文课程。你不需要 GPU，也不需�
 <div class="llm-stats" markdown>
   <div><strong>10</strong><span>学习阶段</span></div>
   <div><strong>12</strong><span>可运行实验</span></div>
-  <div><strong>26</strong><span>自动化测试</span></div>
+  <div><strong>46+</strong><span>自动化测试</span></div>
   <div><strong>CPU</strong><span>即可完成</span></div>
 </div>
 
@@ -68,7 +68,7 @@ LearnLLM 是一套面向初学者的中文课程。你不需要 GPU，也不需�
 | 02 Tokenizer 与语言模型 | 实验 02–03 | 文本怎样编码？Bigram 能学到什么？ |
 | 03 注意力与 Transformer | 实验 04–05 | Q/K/V、缩放和因果 mask 怎样协作？ |
 | 04–05 模型与预训练 | 实验 06–07 | 训练怎样降低 loss？checkpoint 为什么必须冻结 config 与 Tokenizer？ |
-| 06 SFT、LoRA 与对齐 | 实验 08、10 | 同一 base 上的随机/Full/LoRA 分支怎样比较 SFT-heldout、原语料保持度代理与参数成本？ |
+| 06 SFT、LoRA 与对齐 | 实验 08、10 | 同一 base 上的随机/Full/LoRA 分支怎样比较 train/dev/test 任务指标、原语料保持度代理与参数成本？ |
 | 07 评测、RAG 与 Agent | 实验 09、11 | 系统怎样引用证据、拒答并安全调用工具？ |
 | 08 结课项目 | Attention 消融示例 | 怎样把问题、对照、指标和边界写成可复现实验？ |
 
@@ -82,7 +82,11 @@ LearnLLM 是一套面向初学者的中文课程。你不需要 GPU，也不需�
 
 !!! warning "实验 10 依赖实验 06"
 
-    先运行实验 06 生成 `checkpoints/tiny_gpt.pt`。实验 10 会复用其中的预训练权重、config 和冻结 Tokenizer，并从同一 base 独立比较 pretrained base、random-init Full SFT、pretrained Full SFT 与 pretrained LoRA-SFT。实验 08 只是单层 LoRA 原理演示。
+    先运行实验 06 生成 `checkpoints/tiny_gpt.pt`。实验 10 会复用其中的预训练权重、config 和冻结 Tokenizer，并从同一 base 独立比较 pretrained base、random-init Full SFT、pretrained Full SFT 与 pretrained LoRA-SFT。评测采用 4/4/4 train/dev/test：dev 用于调参，test 训练后只评一次；默认 3 个 seed 汇总任务/关键词/格式指标并写入 JSON/CSV。`new_intent` 不代表未知知识，Tiny 模型的 0% 严格成功率也应如实保留。实验 08 只是单层 LoRA 原理演示。
+
+!!! info "LoRA adapter 可独立加载"
+
+    实验 10 保存 adapter 后，实验 07 可用 `--base-checkpoint checkpoints/tiny_gpt.pt --adapter checkpoints/tiny_gpt_lora_adapter.pt` 严格校验并组合两份 artifact。CI 同时覆盖 Windows 3.11/3.12 验证和 Ubuntu 3.12 wheel 构建、非 editable 安装与快速训练链路。
 
 ## 五分钟启动
 

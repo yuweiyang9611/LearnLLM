@@ -20,7 +20,7 @@
 | `n_layer` | 2 | Decoder Block 数 |
 | `n_head` | 4 | 注意力头数 |
 | `n_embd` | 64 | 每个位置的隐藏维度 |
-| `vocab_size` | 由本地预训练语料决定 | 输出分类数量；语料前 90% 覆盖后续 SFT/heldout 所需字符 |
+| `vocab_size` | 由本地预训练语料决定 | 输出分类数量；语料前 90% 覆盖后续 SFT train/dev/test 所需字符 |
 | `dropout` | 0 | 小实验先消除随机影响 |
 
 参数量远小于真实 LLM。缩小不会改变 causal attention、残差、MLP、交叉熵和生成循环的逻辑。
@@ -110,11 +110,13 @@ AdamW 根据梯度、动量统计和学习率更新参数。只有到这里权�
 - 当前 step。
 - 模型配置。
 - 字符 Tokenizer 状态。
-- 随机种子、预训练语料相对路径、后续指令词表来源，以及三份数据文件的 SHA-256。
+- 随机种子、预训练语料相对路径、后续指令词表来源，以及预训练语料、train/dev/test 与兼容数据视图的 SHA-256。
 
 只保存权重却不保存配置和 Tokenizer，往往无法正确重建模型。Tokenizer id 映射一旦变化，即使 tensor shape 相同，语义也完全错位。
 
-本项目在实验 06 生成词表后就把 Tokenizer 冻结。实验 10 不会根据指令数据重新建立词表，而会验证训练集和 heldout 集中的字符都已被预训练词表覆盖，并核对语料与两份指令 JSONL 的 SHA-256。这样即使 `checkpoints/` 被 Git 忽略，本地遗留的旧 base 也不能悄悄配合新版数据运行。仓库在语料前 90% 放置了一条自然的词表桥接文本，使这些字符不仅拥有 id，也实际参加预训练；修改指令模板或数据后若出现新字符，应更新预训练语料并重新运行实验 06，而不是在微调阶段扩展词表。
+本项目在实验 06 生成词表后就把 Tokenizer 冻结。实验 10 不会根据指令数据重新建立词表，而会验证 train/dev/test 中的字符都已被预训练词表覆盖，并核对数据 SHA-256。这样即使 `checkpoints/` 被 Git 忽略，本地遗留的旧 base 也不能悄悄配合新版数据运行。仓库在语料前 90% 放置了一条自然的词表桥接文本，使这些字符不仅拥有 id，也实际参加预训练；修改指令模板或数据后若出现新字符，应更新预训练语料并重新运行实验 06，而不是在微调阶段扩展词表。
+
+实验 07 和 10 使用严格 artifact loader：除了模型 state dict，它还校验格式版本、config、冻结 Tokenizer、数据指纹、tensor 键与形状。加载 LoRA 时还会验证 base SHA-256、targets、rank/alpha/dropout 和 adapter tensor；校验失败就停止，而不是部分加载一个表面上能运行的模型。
 
 位置嵌入同样属于 checkpoint。当前 SFT 序列右移后的最大长度必须不超过 base 的 `block_size`；实验 10 会按 checkpoint 中的上限检查，不会为了容纳更长样本创建另一套位置嵌入。
 
@@ -125,6 +127,17 @@ AdamW 根据梯度、动量统计和学习率更新参数。只有到这里权�
 ```powershell
 .\.venv\Scripts\python.exe .\experiments\07_generate.py --prompt "语言模型" --tokens 80
 ```
+
+不传 artifact 参数时，上述命令严格加载默认的 `checkpoints/tiny_gpt.pt`。实验 10 训练出 adapter 后，可在独立进程中显式组合 base + adapter：
+
+```powershell
+.\.venv\Scripts\python.exe .\experiments\07_generate.py `
+  --base-checkpoint .\checkpoints\tiny_gpt.pt `
+  --adapter .\checkpoints\tiny_gpt_lora_adapter.pt `
+  --prompt "为什么需要因果掩码？" --tokens 80
+```
+
+`--base-checkpoint` 与 `--adapter` 必须成对出现，也不能和 `--checkpoint` 混用。adapter 不是完整模型文件；它只能与元数据所绑定的 base 一起恢复。
 
 脚本比较三种策略：
 
@@ -158,7 +171,7 @@ p_i=\operatorname{softmax}(z_i/\tau)
 .\.venv\Scripts\python.exe .\experiments\10_sft_tiny_gpt.py --quick
 ```
 
-实验 10 不会把 Full SFT 的结果再作为 LoRA 的起点。两条预训练微调分支都从 `tiny_gpt.pt` 独立复制，因此 loss、原语料保持度代理、参数量和耗时才可比较。详细的四分支设计与 adapter 文件见下一章。
+实验 10 不会把 Full SFT 的结果再作为 LoRA 的起点。两条预训练微调分支都从 `tiny_gpt.pt` 独立复制，因此 loss、原语料保持度代理、参数量和耗时才可比较。指令数据使用 4/4/4 的 train/dev/test 隔离：dev 用于调参，test 在训练结束后才评一次。详细的四分支设计、任务指标、JSON/CSV 记录与 adapter 文件见下一章。
 
 ## 8. 单变量探索
 

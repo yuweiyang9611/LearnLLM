@@ -48,11 +48,22 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1
 # 先生成 checkpoints/tiny_gpt.pt
 .\.venv\Scripts\python.exe .\experiments\06_train_tiny_gpt.py --quick
 
-# 使用同一份 base config、权重和冻结 Tokenizer 比较四组结果
+# 使用同一份 base config、权重和冻结 Tokenizer 比较四组结果；默认 3 个 seed
 .\.venv\Scripts\python.exe .\experiments\10_sft_tiny_gpt.py --quick
 ```
 
-实验 10 比较未微调的 pretrained base、随机初始化 Full SFT、预训练 Full SFT 和预训练 LoRA-SFT；同时记录训练与仅 SFT-heldout 的指令 loss、原语料验证 loss（作为保持度/干扰代理）、可训练参数量、耗时与生成样例。实验 06/10 用数据 SHA-256 拒绝旧 checkpoint 与新语料混用。各训练机制使用脚本明确打印并写入 metadata 的学习率，因此这是共享 config/Tokenizer 且两个预训练微调分支共享起点的机制对照，不是学习率也完全相同的单变量实验。实验 08 是独立的 LoRA 原理演示，用一个小型 Linear 清楚验证低秩旁路、冻结和合并，不生成 TinyGPT 适配器；真实 adapter 由实验 10 训练并保存。
+实验 10 使用可机器读取的 4/4/4 切分：train 四条是 `seen`，dev 四条是相同意图族的 `paraphrase`，test 四条包含两条 `paraphrase` 和两条 `new_intent`。只用 dev 选择步数、学习率或 LoRA 配置；每个分支和 seed 的 test 在训练结束后才评一次。默认运行 seed 42/43/44，并对 assistant loss、严格任务成功率、关键词准确率、格式准确率和原语料验证 loss（保持度/干扰代理）报告均值与总体标准差，同时逐 seed 记录可训练/总参数量与耗时。`new_intent` 只是数据切分标签，不等于预训练时未知的知识，不能据此宣称未知知识泛化；Tiny 字符模型得到 0% 严格任务成功率也可能是诚实结果。
+
+每次运行还会在唯一的 `outputs/sft/<时间>-seeds-.../` 目录写入 `sft_comparison.json` manifest 与长格式 `sft_comparison.csv` 训练历史。路径、seed、步数、三种学习率、数据文件、LoRA rank/alpha/dropout、生成长度、batch size、设备以及完整模型/adapter 输出都可通过 CLI 配置；用 `--help` 查看全部选项。实验 06/10 用数据 SHA-256 拒绝旧 checkpoint 与新语料混用。严格 artifact loader 会校验版本、config、冻结 Tokenizer、base/data SHA-256、LoRA targets 与 tensor 键/形状，再恢复模型。实验 08 仍是独立的小型 Linear 原理演示；真实 adapter 由实验 10 训练并保存。
+
+实验 10 完成后，可以让实验 07 在新的进程中独立加载 base + adapter，而不是依赖内存中的训练模型：
+
+```powershell
+.\.venv\Scripts\python.exe .\experiments\07_generate.py `
+  --base-checkpoint .\checkpoints\tiny_gpt.pt `
+  --adapter .\checkpoints\tiny_gpt_lora_adapter.pt `
+  --prompt "为什么需要因果掩码？" --tokens 80
+```
 
 ## 推荐阅读顺序
 
@@ -92,7 +103,7 @@ PDF 依赖固定在 `requirements-docs.txt`，不属于基础实验的必装项�
 
 ## 自动化验证
 
-GitHub Actions 在 Windows 上分别使用 Python 3.11 和 3.12 执行 `scripts/verify.ps1`，覆盖 26 项单测、venv 隔离、RAG、SFT、Agent 与结课示例。独立的 Python 3.12 任务还会从讲义重建 PDF、运行结构和文本检查，并上传 PDF 构建产物。工作流定义见 [`.github/workflows/ci.yml`](.github/workflows/ci.yml)。
+GitHub Actions 在 Windows 上分别使用 Python 3.11 和 3.12 执行 `scripts/verify.ps1`，覆盖至少 46 项单测、venv 隔离、RAG、SFT、Agent 与结课示例；独立的 Ubuntu + Python 3.12 任务会构建 wheel、非 editable 安装该 wheel，并运行单测和实验 06→10 快速链路。Windows 的另一项任务会从讲义重建 PDF、运行结构和文本检查并上传产物。工作流定义见 [`.github/workflows/ci.yml`](.github/workflows/ci.yml)。
 
 ## 实验地图
 
@@ -108,7 +119,7 @@ GitHub Actions 在 Windows 上分别使用 Python 3.11 和 3.12 执行 `scripts/
 | 07 生成与采样 | 30-60 分钟 | temperature/top-k 改变什么？ | 固定种子可复现并比较策略 |
 | 08 LoRA 原理 | 45-90 分钟 | 低秩旁路为什么能只训练少量参数？ | 小型 Linear 原权重冻结；A/B 有梯度；合并等价 |
 | 09 Tiny RAG | 45-90 分钟 | 如何让检索结果变成可核对的回答？ | 正确召回；带来源；资料外问题拒答 |
-| 10 TinyGPT SFT 对比 | 45-90 分钟 | 预训练与参数高效微调各带来什么？ | 四分支共用 config/Tokenizer；记录 SFT-heldout、原语料保持度代理和参数量；adapter 可恢复 |
+| 10 TinyGPT SFT 对比 | 45-90 分钟 | 预训练与参数高效微调各带来什么？ | 四分支共用 config/Tokenizer；隔离 train/dev/test；记录任务/关键词/格式指标、保持度代理和参数量；adapter 可独立恢复 |
 | 11 本地 Agent | 45-90 分钟 | 工具、状态和停止条件如何组成控制循环？ | 白名单、错误状态与最大步数均通过 |
 
 时间是“边读边做”的估计；脚本本身通常只运行数秒，TinyGPT CPU 训练视步数而定。
