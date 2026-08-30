@@ -15,6 +15,7 @@ import re
 import sys
 import unicodedata
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Iterable
 
@@ -46,6 +47,50 @@ from reportlab.platypus.tableofcontents import TableOfContents
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = PROJECT_ROOT / "output" / "pdf" / "LearnLLM-从零学习大语言模型.pdf"
+
+GUIDE_SOURCE = PROJECT_ROOT / "LEARNING_GUIDE.md"
+FOUNDATION_SOURCES = tuple(
+    PROJECT_ROOT / "docs" / filename
+    for filename in (
+        "00_学习路线与环境.md",
+        "01_数学与PyTorch基础.md",
+        "02_Tokenizer与语言模型.md",
+    )
+)
+MODEL_SOURCES = tuple(
+    PROJECT_ROOT / "docs" / filename
+    for filename in (
+        "03_注意力与Transformer.md",
+        "04_模型家族与训练生命周期.md",
+    )
+)
+TRAINING_SOURCES = tuple(
+    PROJECT_ROOT / "docs" / filename
+    for filename in (
+        "05_迷你GPT预训练与生成.md",
+        "06_SFT_LoRA与对齐.md",
+    )
+)
+APPLICATION_SOURCE = PROJECT_ROOT / "docs" / "07_评测_RAG与Agent.md"
+PROJECT_SOURCE = PROJECT_ROOT / "docs" / "08_结课项目.md"
+TEMPLATE_SOURCE = PROJECT_ROOT / "docs" / "实验记录模板.md"
+REFERENCE_SOURCE = PROJECT_ROOT / "docs" / "PDF_章节对照与勘误.md"
+PDF_MARKDOWN_SOURCES = (
+    GUIDE_SOURCE,
+    *FOUNDATION_SOURCES,
+    *MODEL_SOURCES,
+    *TRAINING_SOURCES,
+    APPLICATION_SOURCE,
+    PROJECT_SOURCE,
+    TEMPLATE_SOURCE,
+    REFERENCE_SOURCE,
+)
+PDF_BUILD_INPUTS = (
+    Path(__file__).resolve(),
+    PROJECT_ROOT / "requirements-docs.txt",
+    *PDF_MARKDOWN_SOURCES,
+)
+SOURCE_DIGEST_KEY = "LearnLLM-source-sha256"
 
 DEFAULT_FONT_REGULAR = Path(r"C:\Windows\Fonts\msyh.ttc")
 DEFAULT_FONT_BOLD = Path(r"C:\Windows\Fonts\msyhbd.ttc")
@@ -388,11 +433,62 @@ def build_styles() -> dict[str, ParagraphStyle]:
     }
 
 
+@lru_cache(maxsize=1)
+def source_digest() -> str:
+    """Hash every source that affects the tracked learning-guide PDF."""
+
+    digest = hashlib.sha256()
+    for path in PDF_BUILD_INPUTS:
+        relative_path = path.relative_to(PROJECT_ROOT).as_posix().encode("utf-8")
+        digest.update(relative_path)
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def embedded_source_digest(path: Path) -> str | None:
+    """Read the source digest from a generated PDF without rendering it."""
+
+    from pypdf import PdfReader
+
+    reader = PdfReader(path)
+    metadata = reader.metadata
+    keywords = str(metadata.get("/Keywords", "")) if metadata else ""
+    pattern = rf"(?:^|;\s*){re.escape(SOURCE_DIGEST_KEY)}=([0-9a-f]{{64}})(?:;|$)"
+    match = re.search(pattern, keywords)
+    return match.group(1) if match else None
+
+
+def check_source_digest(path: Path) -> bool:
+    """Check that a tracked PDF was built from the current repository inputs."""
+
+    expected = source_digest()
+    if not path.is_file():
+        print(f"PDF does not exist: {path}", file=sys.stderr)
+        return False
+    try:
+        actual = embedded_source_digest(path)
+    except Exception as exc:
+        print(f"Could not read PDF source digest: {exc}", file=sys.stderr)
+        return False
+    if actual != expected:
+        print("Tracked PDF is stale; rebuild it with this script.", file=sys.stderr)
+        print(f"expected source SHA256: {expected}", file=sys.stderr)
+        print(f"embedded source SHA256: {actual or '<missing>'}", file=sys.stderr)
+        return False
+    print(f"PDF source digest is current: {expected}")
+    return True
+
+
 def set_metadata(canvas) -> None:
     canvas.setTitle("从零学习 LLM：大语言模型原理、实验与项目实践")
     canvas.setAuthor("LearnLLM")
     canvas.setSubject("参考 Happy-LLM v1.0 知识主线的中文 LLM 自学教程")
-    canvas.setKeywords("LLM, Transformer, PyTorch, Tokenizer, LoRA, RAG")
+    canvas.setKeywords(
+        "LLM, Transformer, PyTorch, Tokenizer, LoRA, RAG; "
+        f"{SOURCE_DIGEST_KEY}={source_digest()}"
+    )
 
 
 def draw_cover(canvas, doc) -> None:
@@ -476,6 +572,10 @@ def create_document(output_path: Path) -> GuideDocTemplate:
     document = GuideDocTemplate(
         str(output_path),
         pagesize=A4,
+        # Remove timestamps and random document IDs so repeated builds in the
+        # same environment are stable. CI uses the embedded source digest
+        # because runner font binaries can still differ between machines.
+        invariant=1,
         leftMargin=LEFT_MARGIN,
         rightMargin=RIGHT_MARGIN,
         topMargin=TOP_MARGIN,
@@ -1135,7 +1235,7 @@ def build_story(styles: dict[str, ParagraphStyle]) -> list[Flowable]:
         "先建立完整心智模型",
         "从概率语言模型到 Transformer、训练、适配和应用系统的全景路线",
     )
-    append_markdown(story, PROJECT_ROOT / "LEARNING_GUIDE.md", styles)
+    append_markdown(story, GUIDE_SOURCE, styles)
 
     add_part_page(
         story,
@@ -1144,12 +1244,10 @@ def build_story(styles: dict[str, ParagraphStyle]) -> list[Flowable]:
         "实验基础",
         "隔离环境 · 数学与 PyTorch · Tokenizer 与语言模型",
     )
-    for item_index, filename in enumerate(
-        ["00_学习路线与环境.md", "01_数学与PyTorch基础.md", "02_Tokenizer与语言模型.md"]
-    ):
+    for item_index, source in enumerate(FOUNDATION_SOURCES):
         append_markdown(
             story,
-            PROJECT_ROOT / "docs" / filename,
+            source,
             styles,
             page_break=item_index > 0,
         )
@@ -1161,12 +1259,10 @@ def build_story(styles: dict[str, ParagraphStyle]) -> list[Flowable]:
         "模型结构",
         "注意力与 Transformer · 模型家族与训练生命周期",
     )
-    for item_index, filename in enumerate(
-        ["03_注意力与Transformer.md", "04_模型家族与训练生命周期.md"]
-    ):
+    for item_index, source in enumerate(MODEL_SOURCES):
         append_markdown(
             story,
-            PROJECT_ROOT / "docs" / filename,
+            source,
             styles,
             page_break=item_index > 0,
         )
@@ -1178,12 +1274,10 @@ def build_story(styles: dict[str, ParagraphStyle]) -> list[Flowable]:
         "训练与适配",
         "TinyGPT 预训练与生成 · SFT、LoRA 与偏好对齐",
     )
-    for item_index, filename in enumerate(
-        ["05_迷你GPT预训练与生成.md", "06_SFT_LoRA与对齐.md"]
-    ):
+    for item_index, source in enumerate(TRAINING_SOURCES):
         append_markdown(
             story,
-            PROJECT_ROOT / "docs" / filename,
+            source,
             styles,
             page_break=item_index > 0,
         )
@@ -1195,7 +1289,7 @@ def build_story(styles: dict[str, ParagraphStyle]) -> list[Flowable]:
         "应用系统",
         "评测、RAG 与 Agent：从会生成文本到可验证的系统",
     )
-    append_markdown(story, PROJECT_ROOT / "docs" / "07_评测_RAG与Agent.md", styles)
+    append_markdown(story, APPLICATION_SOURCE, styles)
 
     add_part_page(
         story,
@@ -1204,7 +1298,7 @@ def build_story(styles: dict[str, ParagraphStyle]) -> list[Flowable]:
         "独立实践",
         "用结课项目证明你能提出问题、控制变量、复现实验并解释边界",
     )
-    append_markdown(story, PROJECT_ROOT / "docs" / "08_结课项目.md", styles)
+    append_markdown(story, PROJECT_SOURCE, styles)
 
     add_part_page(
         story,
@@ -1213,11 +1307,11 @@ def build_story(styles: dict[str, ParagraphStyle]) -> list[Flowable]:
         "模板、参考与勘误",
         "实验记录模板 · 《Happy-LLM v1.0》物理页码对照与代码风险",
     )
-    append_markdown(story, PROJECT_ROOT / "docs" / "实验记录模板.md", styles)
+    append_markdown(story, TEMPLATE_SOURCE, styles)
     story.extend([NextPageTemplate("Landscape"), PageBreak()])
     append_markdown(
         story,
-        PROJECT_ROOT / "docs" / "PDF_章节对照与勘误.md",
+        REFERENCE_SOURCE,
         styles,
         available_width=LANDSCAPE_BODY_WIDTH,
     )
@@ -1241,6 +1335,11 @@ def main() -> None:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument(
+        "--check-source",
+        action="store_true",
+        help="check that the output PDF embeds the digest of the current build inputs",
+    )
     parser.add_argument(
         "--font-regular",
         type=Path,
@@ -1267,6 +1366,10 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    output_path = args.output.resolve()
+    if args.check_source:
+        raise SystemExit(0 if check_source_digest(output_path) else 1)
+
     register_fonts(
         FontConfig(
             regular=args.font_regular.expanduser(),
@@ -1276,7 +1379,6 @@ def main() -> None:
         )
     )
     styles = build_styles()
-    output_path = args.output.resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     document = create_document(output_path)
     story = build_story(styles)
@@ -1284,6 +1386,7 @@ def main() -> None:
     digest = hashlib.sha256(output_path.read_bytes()).hexdigest()
     print(f"PDF: {output_path}")
     print(f"SHA256: {digest}")
+    print(f"Source SHA256: {source_digest()}")
 
 
 if __name__ == "__main__":

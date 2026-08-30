@@ -142,7 +142,8 @@ token ids [B,T]
 
 - 实验：`06_train_tiny_gpt.py`。
 - 先用 `--quick` 检查管线，再增加步数。
-- 验收：loss 比初始值明显下降；保存 checkpoint；加载后输出一致。
+- 验收：loss 比初始值明显下降；保存包含配置、权重和冻结 Tokenizer 的真实 base checkpoint；加载后输出一致。
+- 后续实验 07 和 10 都以 `checkpoints/tiny_gpt.pt` 为源，不得在微调阶段重建词表或位置嵌入。checkpoint 记录语料与两份指令数据的 SHA-256；修改数据、指令字符或窗口上限后，应回到实验 06 重新预训练。
 - 重要限制：在小语料上过拟合只证明训练管线工作，不证明模型理解世界。
 
 ### 阶段 7：自回归生成与评测
@@ -168,9 +169,11 @@ W = W_0 + \Delta W = W_0 + BA
 
 - 量化改变参数的数值表示；LoRA 改变可训练参数集合；两者不是同义词。
 - 偏好对齐使用 chosen/rejected 或奖励信号改变输出偏好；不是简单的事实注入。
-- 实验：`10_sft_tiny_gpt.py`、`08_lora.py`。
-- 验收 SFT：prompt 与 padding label 都是 `-100`；逐样本 assistant loss 明显下降；参数确实改变并保存 checkpoint。
-- 验收 LoRA：基础权重逐元素不变；A/B 获得梯度；合并前后输出一致。
+- 实验：先运行 `06_train_tiny_gpt.py` 生成 base，再运行 `10_sft_tiny_gpt.py`；`08_lora.py` 是独立的 Linear 原理演示。
+- 实验 10 从同一 base 独立比较 pretrained base、random-init Full SFT、pretrained Full SFT 和 pretrained LoRA-SFT，而不是把 LoRA 接在 Full SFT 后面。各机制的学习率会单独打印并写入产物 metadata；这是起点与评测设置受控的机制对照，不是所有超参数相同的单变量实验。
+- 验收 SFT：prompt 与 padding label 都是 `-100`；训练 loss 下降；Full SFT 参数确实改变并保存完整模型权重 checkpoint（不含续训所需的 optimizer 状态）。
+- 验收 LoRA：基础权重逐元素不变；只有 A/B 可训练；注入前后输出一致；adapter-only 保存与恢复一致。
+- 比较时同时记录仅 SFT-heldout 的 assistant loss、原预训练语料 validation loss 的保持度/干扰代理、可训练/总参数量、耗时和 seen/heldout 生成，不用单一训练 loss 宣布某个分支“更好”。
 
 ### 阶段 9：RAG、Agent 和系统评测
 
@@ -191,8 +194,8 @@ W = W_0 + \Delta W = W_0 + BA
 | 3 | Q/K/V、缩放、mask | 实验 04；手画 3×3 causal mask |
 | 4 | 多头、残差、Norm、MLP | 实验 05；完成无未来泄漏测试 |
 | 5 | BERT/T5/GPT 与训练生命周期 | 模型家族对比图；CLM/SFT loss mask |
-| 6 | TinyGPT 预训练和生成 | checkpoint、loss 记录、三种采样结果 |
-| 7 | SFT、LoRA、评测 | assistant-only mask；逐样本 loss；参数统计与 LoRA 梯度记录 |
+| 6 | TinyGPT 预训练和生成 | 真实 base checkpoint、冻结 Tokenizer、loss 记录、三种采样结果 |
+| 7 | SFT、LoRA、评测 | 四分支对比；assistant-only mask；SFT-heldout/保持度代理；参数统计；完整模型权重与 LoRA adapter |
 | 8 | RAG、Agent 与结课项目 | 检索/拒答/支持指标；Agent 轨迹；消融与失败案例 |
 
 每天 45-90 分钟即可。每周最后一次不学新概念，只做复述、测试和修复。

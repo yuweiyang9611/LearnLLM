@@ -63,6 +63,12 @@ jobs:
         shell: powershell
         run: .\scripts\bootstrap.ps1 -Python python -WithDocs
 
+      - name: Verify tracked PDF and its source digest
+        shell: powershell
+        run: |
+          .\.venv\Scripts\python.exe .\scripts\verify_pdf.py
+          .\.venv\Scripts\python.exe .\scripts\build_learning_guide_pdf.py --check-source
+
       - name: Build learning guide PDF
         shell: powershell
         run: .\.venv\Scripts\python.exe .\scripts\build_learning_guide_pdf.py

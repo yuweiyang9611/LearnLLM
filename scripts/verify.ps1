@@ -28,6 +28,33 @@ Invoke-CheckedPython `
     -Arguments @((Join-Path $ProjectRoot "experiments\00_environment_check.py")) `
     -Description "Environment isolation check"
 Invoke-CheckedPython `
+    -Arguments @((Join-Path $ProjectRoot "experiments\01_math_foundations.py")) `
+    -Description "Math foundations experiment"
+Invoke-CheckedPython `
+    -Arguments @((Join-Path $ProjectRoot "experiments\02_tokenization.py")) `
+    -Description "Tokenization experiment"
+Invoke-CheckedPython `
+    -Arguments @((Join-Path $ProjectRoot "experiments\03_bigram_language_model.py")) `
+    -Description "Bigram language model experiment"
+Invoke-CheckedPython `
+    -Arguments @((Join-Path $ProjectRoot "experiments\04_attention.py")) `
+    -Description "Attention experiment"
+Invoke-CheckedPython `
+    -Arguments @((Join-Path $ProjectRoot "experiments\05_transformer_block.py")) `
+    -Description "Transformer block experiment"
+Invoke-CheckedPython `
+    -Arguments @(
+        (Join-Path $ProjectRoot "experiments\06_train_tiny_gpt.py"),
+        "--quick"
+    ) `
+    -Description "TinyGPT pretraining experiment"
+Invoke-CheckedPython `
+    -Arguments @((Join-Path $ProjectRoot "experiments\07_generate.py")) `
+    -Description "TinyGPT generation experiment"
+Invoke-CheckedPython `
+    -Arguments @((Join-Path $ProjectRoot "experiments\08_lora.py")) `
+    -Description "LoRA and SFT masking experiment"
+Invoke-CheckedPython `
     -Arguments @((Join-Path $ProjectRoot "experiments\09_tiny_rag.py")) `
     -Description "Tiny RAG experiment"
 Invoke-CheckedPython `

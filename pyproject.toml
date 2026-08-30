@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools==78.1.1"]
+requires = ["setuptools==83.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -18,7 +18,7 @@ dependencies = [
 [project.optional-dependencies]
 docs = [
     "reportlab==4.4.9",
-    "pypdf==6.13.3",
+    "pypdf==6.15.0",
 ]
 
 [tool.setuptools]

@@ -42,6 +42,18 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1
 .\.venv\Scripts\python.exe .\experiments\05_transformer_block.py
 ```
 
+进入训练阶段后，实验存在明确的上游关系：先运行实验 06 生成真实预训练 checkpoint，并把其中的模型配置与字符 Tokenizer 作为后续阶段不可随意重建的基线；再运行实验 10，让 Full SFT 与 LoRA-SFT 从同一个 base 独立分叉，并加入 random-init SFT 作为额外基线。
+
+```powershell
+# 先生成 checkpoints/tiny_gpt.pt
+.\.venv\Scripts\python.exe .\experiments\06_train_tiny_gpt.py --quick
+
+# 使用同一份 base config、权重和冻结 Tokenizer 比较四组结果
+.\.venv\Scripts\python.exe .\experiments\10_sft_tiny_gpt.py --quick
+```
+
+实验 10 比较未微调的 pretrained base、随机初始化 Full SFT、预训练 Full SFT 和预训练 LoRA-SFT；同时记录训练与仅 SFT-heldout 的指令 loss、原语料验证 loss（作为保持度/干扰代理）、可训练参数量、耗时与生成样例。实验 06/10 用数据 SHA-256 拒绝旧 checkpoint 与新语料混用。各训练机制使用脚本明确打印并写入 metadata 的学习率，因此这是共享 config/Tokenizer 且两个预训练微调分支共享起点的机制对照，不是学习率也完全相同的单变量实验。实验 08 是独立的 LoRA 原理演示，用一个小型 Linear 清楚验证低秩旁路、冻结和合并，不生成 TinyGPT 适配器；真实 adapter 由实验 10 训练并保存。
+
 ## 推荐阅读顺序
 
 1. [总学习指导](LEARNING_GUIDE.md)：先理解目标、节奏和验收方式。
@@ -50,8 +62,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1
 4. [Tokenizer 与语言模型](docs/02_Tokenizer与语言模型.md)：从字符、BPE 到 Bigram。
 5. [注意力与 Transformer](docs/03_注意力与Transformer.md)：Q/K/V、因果掩码、多头与残差。
 6. [模型家族与训练生命周期](docs/04_模型家族与训练生命周期.md)：BERT、T5、GPT，Pretrain、SFT、偏好对齐。
-7. [迷你 GPT：预训练与生成](docs/05_迷你GPT预训练与生成.md)：训练自己的 Decoder-only 模型。
-8. [SFT、LoRA 与对齐](docs/06_SFT_LoRA与对齐.md)：理解“训练什么参数”和“训练什么目标”。
+7. [迷你 GPT：预训练与生成](docs/05_迷你GPT预训练与生成.md)：训练并保存后续微调共用的 Decoder-only base。
+8. [SFT、LoRA 与对齐](docs/06_SFT_LoRA与对齐.md)：从同一 base 对比 Full SFT 与 LoRA-SFT，理解“训练什么参数”和“训练什么目标”。
 9. [评测、RAG 与 Agent](docs/07_评测_RAG与Agent.md)：从模型到可评测的应用系统。
 10. [结课项目](docs/08_结课项目.md)：完成一份可复现的实验报告。
 
@@ -80,7 +92,7 @@ PDF 依赖固定在 `requirements-docs.txt`，不属于基础实验的必装项�
 
 ## 自动化验证
 
-GitHub Actions 在 Windows 上分别使用 Python 3.11 和 3.12 执行 `scripts/verify.ps1`，覆盖 20 项单测、venv 隔离、RAG、SFT、Agent 与结课示例。独立的 Python 3.12 任务还会从讲义重建 PDF、运行结构和文本检查，并上传 PDF 构建产物。工作流定义见 [`.github/workflows/ci.yml`](.github/workflows/ci.yml)。
+GitHub Actions 在 Windows 上分别使用 Python 3.11 和 3.12 执行 `scripts/verify.ps1`，覆盖 26 项单测、venv 隔离、RAG、SFT、Agent 与结课示例。独立的 Python 3.12 任务还会从讲义重建 PDF、运行结构和文本检查，并上传 PDF 构建产物。工作流定义见 [`.github/workflows/ci.yml`](.github/workflows/ci.yml)。
 
 ## 实验地图
 
@@ -92,11 +104,11 @@ GitHub Actions 在 Windows 上分别使用 Python 3.11 和 3.12 执行 `scripts/
 | 03 Bigram LM | 30-60 分钟 | “预测下一个 token”究竟是什么？ | 困惑度低于均匀随机基线 |
 | 04 Attention | 45-90 分钟 | Q/K/V 如何混合信息？ | 权重行和为 1；未来权重为 0 |
 | 05 Transformer | 60-120 分钟 | 一个 Decoder Block 如何工作？ | 形状正确；无未来泄漏 |
-| 06 训练 TinyGPT | 10-30 分钟运行 | 训练循环如何让 loss 下降？ | loss 明显下降并保存 checkpoint |
+| 06 训练 TinyGPT | 10-30 分钟运行 | 训练循环如何让 loss 下降？ | loss 明显下降；保存真实 base checkpoint 与冻结 Tokenizer |
 | 07 生成与采样 | 30-60 分钟 | temperature/top-k 改变什么？ | 固定种子可复现并比较策略 |
-| 08 LoRA | 45-90 分钟 | 怎样只训练少量参数？ | 原权重冻结；A/B 有梯度 |
+| 08 LoRA 原理 | 45-90 分钟 | 低秩旁路为什么能只训练少量参数？ | 小型 Linear 原权重冻结；A/B 有梯度；合并等价 |
 | 09 Tiny RAG | 45-90 分钟 | 如何让检索结果变成可核对的回答？ | 正确召回；带来源；资料外问题拒答 |
-| 10 TinyGPT SFT | 45-90 分钟 | assistant-only loss 怎样真正更新模型？ | mask/右移正确；逐样本 loss 下降；参数改变 |
+| 10 TinyGPT SFT 对比 | 45-90 分钟 | 预训练与参数高效微调各带来什么？ | 四分支共用 config/Tokenizer；记录 SFT-heldout、原语料保持度代理和参数量；adapter 可恢复 |
 | 11 本地 Agent | 45-90 分钟 | 工具、状态和停止条件如何组成控制循环？ | 白名单、错误状态与最大步数均通过 |
 
 时间是“边读边做”的估计；脚本本身通常只运行数秒，TinyGPT CPU 训练视步数而定。

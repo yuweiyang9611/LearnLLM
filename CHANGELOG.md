@@ -2,6 +2,20 @@
 
 本项目遵循语义化版本。这里只记录对学习者可见的课程、实验和复现方式变化。
 
+## [Unreleased]
+
+### Changed
+
+- 实验 06 现在生成后续训练共用的真实预训练 checkpoint，并冻结其中的模型配置与字符 Tokenizer；预训练词表会覆盖训练及 heldout 指令字符。
+- 实验 10 改为从同一个 base 独立比较 pretrained base、random-init Full SFT、pretrained Full SFT 与 pretrained LoRA-SFT，不再重新创建随机小模型冒充微调。
+- 实验 08 明确定位为小型 Linear 上的 LoRA 原理演示；真实 TinyGPT LoRA-SFT 由实验 10 完成。
+
+### Added
+
+- 增加未参与 SFT 的 heldout 指令集（用于观察指令格式迁移，不作为未知知识评测），并在对比中同时报告训练/SFT-heldout assistant loss、原语料保持度/干扰代理、可训练参数量、耗时和生成样例。
+- Full SFT 保存完整模型权重与 metadata（不含 optimizer 状态）；LoRA-SFT 保存 adapter-only 产物，并记录 base SHA-256、冻结 Tokenizer、模型配置、目标层、rank 与 alpha，且验证恢复后输出一致。
+- base 与微调产物记录数据 SHA-256、步数、学习率、优化器配置和最终指标；实验 10 会拒绝旧 checkpoint 与新版语料混用。
+
 ## [0.1.0] - 2026-07-16
 
 ### Added

@@ -1,0 +1,2 @@
+{"instruction":"验证损失有什么作用？","response":"验证损失可以帮助发现过拟合。"}
+{"instruction":"RAG 会保证答案正确吗？","response":"不会，仍然需要评测和引用来源。"}

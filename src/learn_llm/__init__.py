@@ -5,7 +5,13 @@ ones.  Each module is small enough to read beside the corresponding lesson.
 """
 
 from .attention import scaled_dot_product_attention
-from .lora import LoRALinear
+from .lora import (
+    LoRALinear,
+    inject_lora,
+    load_lora_adapter_state_dict,
+    lora_adapter_state_dict,
+    lora_parameter_names,
+)
 from .math_utils import cross_entropy, cross_entropy_from_logits, stable_softmax
 from .model import TinyGPT, TinyGPTConfig
 from .rag import Document, RetrievalResult, TfidfRetriever
@@ -21,6 +27,10 @@ __all__ = [
     "TinyGPTConfig",
     "cross_entropy",
     "cross_entropy_from_logits",
+    "inject_lora",
+    "load_lora_adapter_state_dict",
+    "lora_adapter_state_dict",
+    "lora_parameter_names",
     "scaled_dot_product_attention",
     "stable_softmax",
 ]

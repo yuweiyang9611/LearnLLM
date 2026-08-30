@@ -4,16 +4,24 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
+import json
 import math
 import time
 from dataclasses import asdict
+from pathlib import Path
 
 import torch
 
 from _common import CHECKPOINT_DIR, DATA_DIR, PROJECT_ROOT, seed_everything
 from learn_llm.model import TinyGPT, TinyGPTConfig
+from learn_llm.sft import format_instruction_prompt
 from learn_llm.tokenizer import CharTokenizer
-from learn_llm.training import sample_language_model_batch, save_checkpoint
+from learn_llm.training import (
+    load_checkpoint,
+    sample_language_model_batch,
+    save_checkpoint,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -48,8 +56,83 @@ def estimate_loss(
     return sum(losses) / len(losses)
 
 
+def required_instruction_characters() -> set[str]:
+    """Return the frozen vocabulary needed by later SFT/evaluation stages."""
+
+    characters: set[str] = set()
+    for filename in ("tiny_instructions.jsonl", "tiny_instructions_eval.jsonl"):
+        path = DATA_DIR / filename
+        for line_number, line in enumerate(
+            path.read_text(encoding="utf-8").splitlines(), 1
+        ):
+            if not line.strip():
+                continue
+            record = json.loads(line)
+            instruction = record.get("instruction")
+            response = record.get("response")
+            if not isinstance(instruction, str) or not isinstance(response, str):
+                raise ValueError(
+                    f"{path.name}:{line_number} 缺少字符串 instruction/response"
+                )
+            characters.update(format_instruction_prompt(instruction))
+            characters.update(response)
+    return characters
+
+
+def training_data_sha256() -> dict[str, str]:
+    """Bind the base checkpoint to every data file used by later stages."""
+
+    return {
+        f"data/{filename}": hashlib.sha256(
+            (DATA_DIR / filename).read_bytes()
+        ).hexdigest()
+        for filename in (
+            "tiny_corpus.txt",
+            "tiny_instructions.jsonl",
+            "tiny_instructions_eval.jsonl",
+        )
+    }
+
+
+@torch.no_grad()
+def verify_checkpoint_round_trip(
+    checkpoint_path: Path,
+    source_model: TinyGPT,
+    probe: torch.Tensor,
+) -> None:
+    """Rebuild config/tokenizer from metadata and require identical logits."""
+
+    payload = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+    metadata = payload.get("metadata", {})
+    config_state = metadata.get("config")
+    tokenizer_state = metadata.get("tokenizer")
+    if not isinstance(config_state, dict) or not isinstance(tokenizer_state, dict):
+        raise ValueError("checkpoint 缺少 config/tokenizer metadata")
+    restored_config = TinyGPTConfig(**config_state)
+    restored_tokenizer = CharTokenizer.from_state_dict(tokenizer_state)
+    if restored_config.vocab_size != restored_tokenizer.vocab_size:
+        raise ValueError("checkpoint config 与 tokenizer 词表大小不一致")
+
+    restored_model = TinyGPT(restored_config).eval()
+    diagnostics = load_checkpoint(checkpoint_path, restored_model, strict=True)
+    if diagnostics["missing_keys"] or diagnostics["unexpected_keys"]:
+        raise ValueError(f"checkpoint strict load 失败: {diagnostics}")
+    source_model.eval()
+    expected_logits, _ = source_model(probe)
+    actual_logits, _ = restored_model(probe)
+    if not torch.equal(expected_logits, actual_logits):
+        raise AssertionError("checkpoint 往返后的 logits 不一致")
+    if (
+        restored_model.lm_head.weight.data_ptr()
+        != restored_model.token_embedding.weight.data_ptr()
+    ):
+        raise AssertionError("checkpoint 往返后权重绑定已断开")
+
+
 def main() -> None:
     args = parse_args()
+    if args.steps <= 0:
+        raise ValueError("--steps 必须为正数")
     steps = 40 if args.quick else args.steps
     seed_everything(args.seed)
 
@@ -61,6 +144,13 @@ def main() -> None:
     split = int(0.9 * len(all_ids))
     train_ids = all_ids[:split]
     validation_ids = all_ids[split:]
+    missing_characters = required_instruction_characters() - set(corpus[:split])
+    if missing_characters:
+        missing = "".join(sorted(missing_characters))
+        raise ValueError(
+            "预训练段没有覆盖后续指令词表字符："
+            f"{missing!r}；请把自然词表桥接文本放在语料前 90%"
+        )
     block_size = min(48, len(validation_ids) - 1)
     config = TinyGPTConfig(
         vocab_size=tokenizer.vocab_size,
@@ -121,8 +211,18 @@ def main() -> None:
             "config": asdict(config),
             "tokenizer": tokenizer.state_dict(),
             "corpus": "data/tiny_corpus.txt",
+            "instruction_vocabulary": [
+                "data/tiny_instructions.jsonl",
+                "data/tiny_instructions_eval.jsonl",
+            ],
+            "data_sha256": training_data_sha256(),
             "seed": args.seed,
         },
+    )
+    verify_checkpoint_round_trip(
+        checkpoint_path,
+        model,
+        validation_ids[:block_size].unsqueeze(0),
     )
 
     output_dir = PROJECT_ROOT / "outputs"
@@ -134,7 +234,7 @@ def main() -> None:
         writer.writerows(history)
 
     print(f"耗时: {duration:.2f}s")
-    print(f"checkpoint: {checkpoint_path}")
+    print(f"checkpoint: {checkpoint_path}（严格加载与 logits 往返一致）")
     print(f"metrics:    {metrics_path}")
     assert final_train_loss < initial_train_loss * 0.92, (
         "loss 下降不足；先检查数据右移、学习率和梯度，再增加训练步数"
@@ -144,4 +244,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

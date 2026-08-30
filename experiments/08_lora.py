@@ -9,21 +9,38 @@ from torch import nn
 
 from _common import DATA_DIR, seed_everything
 from learn_llm.lora import LoRALinear
+from learn_llm.sft import (
+    IGNORE_INDEX,
+    build_sft_sequence,
+    format_instruction_prompt,
+)
+from learn_llm.tokenizer import CharTokenizer
 
 
 def show_sft_mask() -> None:
     first_line = (DATA_DIR / "tiny_instructions.jsonl").read_text(encoding="utf-8").splitlines()[0]
     record = json.loads(first_line)
-    prompt = f"用户：{record['instruction']}\n助手："
+    instruction = record["instruction"]
+    prompt = format_instruction_prompt(instruction)
     response = record["response"]
-    labels = ["忽略"] * len(prompt) + ["计入"] * len(response)
+    tokenizer = CharTokenizer.from_text(prompt + response)
+    sequence = build_sft_sequence(tokenizer, instruction, response)
+    prompt_token_count = sequence.prompt_token_count
+    first_assistant_label_index = next(
+        index for index, label in enumerate(sequence.labels) if label != IGNORE_INDEX
+    )
 
     print("=== SFT loss mask ===")
     print(prompt + response)
-    print(f"prompt 字符数: {len(prompt)}，loss 中忽略")
-    print(f"answer 字符数: {len(response)}，loss 中计入")
-    assert labels[: len(prompt)] == ["忽略"] * len(prompt)
-    assert all(label == "计入" for label in labels[len(prompt) :])
+    print(f"prompt token 数: {prompt_token_count}")
+    print(f"首个 assistant label 索引: {first_assistant_label_index}")
+    print(f"answer token 数: {sequence.response_token_count}，loss 中计入")
+    assert first_assistant_label_index == prompt_token_count - 1
+    assert first_assistant_label_index == sequence.first_assistant_label_index
+    assert sequence.labels[:first_assistant_label_index] == (
+        IGNORE_INDEX,
+    ) * first_assistant_label_index
+    assert all(label != IGNORE_INDEX for label in sequence.labels[first_assistant_label_index:])
 
 
 def main() -> None:
@@ -53,7 +70,7 @@ def main() -> None:
         optimizer.step()
         loss_history.append(loss.item())
 
-    merged_weight = layer.base.weight + layer.scaling * (layer.lora_B @ layer.lora_A)
+    merged_weight = layer.merged_weight()
     merged_output = x @ merged_weight.T
     lora_output = layer(x)
 
@@ -75,4 +92,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
