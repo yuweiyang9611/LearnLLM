@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools==83.0.0"]
+requires = ["setuptools==84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -14,7 +14,7 @@ dependencies = [
     "numpy==2.4.6",
     # The wheel metadata must use the public version. requirements.txt keeps
     # the CPU-only index and +cpu build for the course environment.
-    "torch==2.13.0",
+    "torch==2.14.0+cpu",
     "matplotlib==3.11.2",
 ]
 
