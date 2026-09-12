@@ -17,8 +17,9 @@ class CharTokenizer:
     """
 
     UNK_TOKEN = "<unk>"
+    EOS_TOKEN = "<eos>"
 
-    def __init__(self, characters: Iterable[str], *, add_unk: bool = False) -> None:
+    def __init__(self, characters: Iterable[str], *, add_unk: bool = False, add_eos: bool = False) -> None:
         unique = sorted(set(characters))
         if any(len(character) != 1 for character in unique):
             raise ValueError("every vocabulary item must be one Unicode character")
@@ -27,17 +28,20 @@ class CharTokenizer:
 
         self._characters = tuple(unique)
         tokens = ([self.UNK_TOKEN] if add_unk else []) + unique
+        if add_eos:
+            tokens.append(self.EOS_TOKEN)
         self.itos: dict[int, str] = dict(enumerate(tokens))
         self.stoi: dict[str, int] = {token: index for index, token in self.itos.items()}
         self.unk_id: int | None = self.stoi.get(self.UNK_TOKEN)
+        self.eos_id: int | None = self.stoi.get(self.EOS_TOKEN)
 
     @classmethod
-    def from_text(cls, text: str, *, add_unk: bool = False) -> "CharTokenizer":
+    def from_text(cls, text: str, *, add_unk: bool = False, add_eos: bool = False) -> "CharTokenizer":
         """Build a reproducible vocabulary from all characters in ``text``."""
 
         if not text:
             raise ValueError("cannot build a tokenizer from empty text")
-        return cls(text, add_unk=add_unk)
+        return cls(text, add_unk=add_unk, add_eos=add_eos)
 
     @property
     def vocab_size(self) -> int:
@@ -62,7 +66,7 @@ class CharTokenizer:
             return torch.tensor(ids, dtype=torch.long)
         return ids
 
-    def decode(self, token_ids: Sequence[int] | Tensor) -> str:
+    def decode(self, token_ids: Sequence[int] | Tensor, *, skip_special_tokens: bool = False) -> str:
         """Turn token IDs back into text (``�`` represents an unknown token)."""
 
         if isinstance(token_ids, Tensor):
@@ -72,17 +76,22 @@ class CharTokenizer:
             token = self.itos.get(int(token_id))
             if token is None:
                 raise ValueError(f"token id {token_id} is outside the vocabulary")
+            if skip_special_tokens and token in (self.EOS_TOKEN, self.UNK_TOKEN):
+                continue
             output.append("�" if token == self.UNK_TOKEN else token)
         return "".join(output)
 
     def state_dict(self) -> dict[str, object]:
         """Return JSON-serializable tokenizer state."""
 
-        return {"characters": list(self._characters), "add_unk": self.unk_id is not None}
+        return {"characters": list(self._characters), "add_unk": self.unk_id is not None, "add_eos": self.eos_id is not None}
 
     @classmethod
     def from_state_dict(cls, state: dict[str, object]) -> "CharTokenizer":
         characters = state.get("characters")
         if not isinstance(characters, list) or not all(isinstance(item, str) for item in characters):
             raise ValueError("invalid tokenizer state: characters must be a list of strings")
-        return cls(characters, add_unk=bool(state.get("add_unk", False)))
+        for key in ("add_unk", "add_eos"):
+            if key in state and type(state[key]) is not bool:
+                raise ValueError(f"{key} must be boolean")
+        return cls(characters, add_unk=state.get("add_unk", False), add_eos=state.get("add_eos", False))

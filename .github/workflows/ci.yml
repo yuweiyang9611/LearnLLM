@@ -92,22 +92,27 @@ jobs:
           == 1.0; model=TinyGPT(TinyGPTConfig(vocab_size=4,block_size=4,
           n_layer=1,n_head=1,n_embd=4)); logits,_=model(torch.tensor([[0,1]]));
           assert logits.shape == (1,2,4); assert attention_lora_targets(model.config);
-          assert TINY_GPT_CHECKPOINT_FORMAT_VERSION == RUN_MANIFEST_VERSION == 1"
+          assert TINY_GPT_CHECKPOINT_FORMAT_VERSION == RUN_MANIFEST_VERSION == 2"
 
       - name: Run Ubuntu unit tests and quick training chain
         run: |
           python -m unittest discover -s tests -v
-          python experiments/06_train_tiny_gpt.py --quick
-          python experiments/10_sft_tiny_gpt.py --quick
-          python experiments/07_generate.py --base-checkpoint checkpoints/tiny_gpt.pt --adapter checkpoints/tiny_gpt_lora_adapter.pt --prompt "为什么需要因果掩码？" --tokens 8
+          python experiments/06_train_tiny_gpt.py --quick --strict-checks
+          python experiments/10_sft_tiny_gpt.py --quick --strict-checks --output-dir outputs/sft/ci-demo
+          python experiments/07_generate.py --run-dir outputs/sft/ci-demo --branch lora --instruction "为什么需要因果掩码？" --tokens 8
+          python experiments/10_sft_tiny_gpt.py --quick --eval-suite extended --seed 42 --strict-checks --output-dir outputs/sft/ci-extended
 
       - name: Upload SFT comparison manifest
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: LearnLLM-sft-comparison
           path: |
             outputs/sft/**/sft_comparison.json
             outputs/sft/**/sft_comparison.csv
+            outputs/sft/**/plots/**
+            outputs/pretrain/**/pretraining.json
+            outputs/pretrain/**/pretraining.csv
           if-no-files-found: error
           retention-days: 30
 

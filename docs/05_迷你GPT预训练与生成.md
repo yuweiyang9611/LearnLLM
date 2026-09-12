@@ -54,7 +54,7 @@ PASS: loss 明显下降，checkpoint 与训练指标已保存。
 
 具体浮点数会因 PyTorch 版本和硬件略有差异；趋势和断言才是验收标准。
 
-这一步不是可跳过的“热身”。它会生成 `checkpoints/tiny_gpt.pt`，实验 07 和实验 10 都从这里恢复同一套模型配置、预训练权重与字符 Tokenizer。若还没有该文件，实验 10 会要求先运行实验 06，而不会悄悄退回随机模型。
+这一步不是可跳过的“热身”。它会生成 `outputs/pretrain/<run-id>/base.pt`，实验 07 和实验 10 都从这里恢复同一套模型配置、预训练权重与字符 Tokenizer。若还没有该文件，实验 10 会要求先运行实验 06，而不会悄悄退回随机模型。
 
 ## 3. 一步训练逐行解释
 
@@ -103,18 +103,18 @@ AdamW 根据梯度、动量统计和学习率更新参数。只有到这里权�
 
 ## 5. Checkpoint 保存了什么
 
-`checkpoints/tiny_gpt.pt` 包含：
+`outputs/pretrain/<run-id>/base.pt` 包含：
 
 - 模型参数 `model_state`。
-- 优化器状态，便于续训。
+- 优化器状态用于检查；本课程尚未提供训练恢复命令。
 - 当前 step。
 - 模型配置。
-- 字符 Tokenizer 状态。
-- 随机种子、预训练语料相对路径、后续指令词表来源，以及预训练语料、train/dev/test 与兼容数据视图的 SHA-256。
+- 字符 Tokenizer 状态，包括独立 EOS token。
+- 随机种子、运行目录内语料副本的相对路径和 SHA-256；评测数据及规则指纹由 SFT run 独立记录。
 
 只保存权重却不保存配置和 Tokenizer，往往无法正确重建模型。Tokenizer id 映射一旦变化，即使 tensor shape 相同，语义也完全错位。
 
-本项目在实验 06 生成词表后就把 Tokenizer 冻结。实验 10 不会根据指令数据重新建立词表，而会验证 train/dev/test 中的字符都已被预训练词表覆盖，并核对数据 SHA-256。这样即使 `checkpoints/` 被 Git 忽略，本地遗留的旧 base 也不能悄悄配合新版数据运行。仓库在语料前 90% 放置了一条自然的词表桥接文本，使这些字符不仅拥有 id，也实际参加预训练；修改指令模板或数据后若出现新字符，应更新预训练语料并重新运行实验 06，而不是在微调阶段扩展词表。
+本项目在实验 06 生成词表后就把 Tokenizer 冻结。实验 10 验证 train/dev/test 的字符和长度约束，使用 base 运行目录里的语料副本核对 SHA-256。修改扩展评测无需重新预训练；若加入词表之外的字符或超过 base 上下文上限，则必须重新准备语料或配置并训练，不能在微调阶段偷偷修改模型。预训练与 SFT 各自保存数据快照，确保结果能追溯到实际输入。
 
 实验 07 和 10 使用严格 artifact loader：除了模型 state dict，它还校验格式版本、config、冻结 Tokenizer、数据指纹、tensor 键与形状。加载 LoRA 时还会验证 base SHA-256、targets、rank/alpha/dropout 和 adapter tensor；校验失败就停止，而不是部分加载一个表面上能运行的模型。
 
@@ -128,13 +128,14 @@ AdamW 根据梯度、动量统计和学习率更新参数。只有到这里权�
 .\.venv\Scripts\python.exe .\experiments\07_generate.py --prompt "语言模型" --tokens 80
 ```
 
-不传 artifact 参数时，上述命令严格加载默认的 `checkpoints/tiny_gpt.pt`。实验 10 训练出 adapter 后，可在独立进程中显式组合 base + adapter：
+不传 artifact 参数时，上述命令通过 `outputs/pretrain/latest.json` 加载最近成功的默认目录预训练。可先在新目录训练 adapter，再在独立进程中按 manifest 恢复：
 
 ```powershell
+$SftRun = ".\outputs\sft\generate-$(Get-Date -Format yyyyMMdd-HHmmssfff)"
+.\.venv\Scripts\python.exe .\experiments\10_sft_tiny_gpt.py --quick --output-dir $SftRun
 .\.venv\Scripts\python.exe .\experiments\07_generate.py `
-  --base-checkpoint .\checkpoints\tiny_gpt.pt `
-  --adapter .\checkpoints\tiny_gpt_lora_adapter.pt `
-  --prompt "为什么需要因果掩码？" --tokens 80
+  --run-dir $SftRun --branch lora `
+  --instruction "为什么需要因果掩码？" --tokens 64
 ```
 
 `--base-checkpoint` 与 `--adapter` 必须成对出现，也不能和 `--checkpoint` 混用。adapter 不是完整模型文件；它只能与元数据所绑定的 base 一起恢复。
@@ -171,7 +172,7 @@ p_i=\operatorname{softmax}(z_i/\tau)
 .\.venv\Scripts\python.exe .\experiments\10_sft_tiny_gpt.py --quick
 ```
 
-实验 10 不会把 Full SFT 的结果再作为 LoRA 的起点。两条预训练微调分支都从 `tiny_gpt.pt` 独立复制，因此 loss、原语料保持度代理、参数量和耗时才可比较。指令数据使用 4/4/4 的 train/dev/test 隔离：dev 用于调参，test 在训练结束后才评一次。详细的四分支设计、任务指标、JSON/CSV 记录与 adapter 文件见下一章。
+实验 10 不会把 Full SFT 的结果再作为 LoRA 的起点。两条预训练微调分支都从同一个 `base.pt` 独立复制，因此 loss、原语料保持度代理、参数量和耗时才可比较。指令数据使用 4/4/4 的 train/dev/test 隔离：dev 用于调参，test 在训练结束后才评一次。详细的四分支设计、任务指标、JSON/CSV 记录与 adapter 文件见下一章。
 
 ## 8. 单变量探索
 
@@ -204,3 +205,13 @@ p_i=\operatorname{softmax}(z_i/\tau)
 3. 为什么保存模型时必须一并保存 Tokenizer？
 4. 为什么“训练集 loss 很低”不能证明模型理解语言？
 5. 为什么实验 10 必须复用实验 06 的 Tokenizer 和 `block_size`？
+
+## 版本 2：运行记录、EOS 和配置消融
+
+每次运行在独立目录保存 `pretraining.json`、`pretraining.csv`、`base.pt`、`corpus.txt` 与 `plots/`。旧版 checkpoint 被明确拒绝，请重跑实验 06→10；不会删除旧文件。默认 `block_size` 至少为 48，且能容纳演示集的完整答案与 EOS，目前为 49。
+
+`--block-size`、`--n-layer`、`--n-head`、`--n-embd`、`--dropout`、`--batch-size`、`--learning-rate`、`--corpus`、`--device` 和 `--output-dir` 均可配置。维度必须能被头数整除，训练和验证语料必须长于窗口。显式短窗口适合消融，但后续 SFT 可能因样本过长而拒绝运行。
+
+EOS 是“答案已结束”的独立 token。SFT 把它作为最后一个监督目标；生成达到 EOS 就停止，不必一直输出到 `--tokens` 上限。批次中已结束的行用 EOS 填充，显示文本时跳过特殊 token。
+
+`status` 描述执行结果，`quality_status` 描述效果。loss 下降不足仍保存完整记录；只有加上 `--strict-checks` 才会在保存后返回退出码 2。运行异常返回 1，中断返回 130，保留已经完成的训练步；不承诺强制杀进程后的完整恢复。图表从 CSV 重建，绘图失败独立记录，不覆盖训练结果。

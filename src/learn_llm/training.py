@@ -96,7 +96,7 @@ def save_checkpoint(
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     checkpoint = {
-        "format_version": 1,
+        "format_version": 2,
         "model_state": model.state_dict(),
         "optimizer_state": optimizer.state_dict() if optimizer is not None else None,
         "step": int(step),

@@ -45,7 +45,7 @@ Invoke-CheckedPython `
 Invoke-CheckedPython `
     -Arguments @(
         (Join-Path $ProjectRoot "experiments\06_train_tiny_gpt.py"),
-        "--quick"
+        "--quick", "--strict-checks"
     ) `
     -Description "TinyGPT pretraining experiment"
 Invoke-CheckedPython `
@@ -57,16 +57,14 @@ Invoke-CheckedPython `
 Invoke-CheckedPython `
     -Arguments @((Join-Path $ProjectRoot "experiments\09_tiny_rag.py")) `
     -Description "Tiny RAG experiment"
+$SftRun = Join-Path $ProjectRoot ("outputs\sft\verify-" + [guid]::NewGuid().ToString("N"))
 Invoke-CheckedPython `
-    -Arguments @((Join-Path $ProjectRoot "experiments\10_sft_tiny_gpt.py"), "--quick") `
+    -Arguments @((Join-Path $ProjectRoot "experiments\10_sft_tiny_gpt.py"), "--quick", "--strict-checks", "--output-dir", $SftRun) `
     -Description "TinyGPT SFT experiment"
 Invoke-CheckedPython `
     -Arguments @(
         (Join-Path $ProjectRoot "experiments\07_generate.py"),
-        "--base-checkpoint",
-        (Join-Path $ProjectRoot "checkpoints\tiny_gpt.pt"),
-        "--adapter",
-        (Join-Path $ProjectRoot "checkpoints\tiny_gpt_lora_adapter.pt"),
+        "--run-dir", $SftRun, "--branch", "lora",
         "--tokens",
         "8"
     ) `
