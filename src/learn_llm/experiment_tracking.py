@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import math
 import platform
 import subprocess
 import sys
@@ -18,7 +19,7 @@ import numpy
 import torch
 
 
-RUN_MANIFEST_VERSION = 1
+RUN_MANIFEST_VERSION = 2
 
 
 def privacy_safe_path(path: Path, *, project_root: Path) -> str:
@@ -36,13 +37,13 @@ def privacy_safe_path(path: Path, *, project_root: Path) -> str:
 class SFTExperimentConfig:
     """All user-controlled settings for one SFT comparison run."""
 
-    base_checkpoint: Path
+    base_checkpoint: Path | None
     train_data: Path
     dev_data: Path
     test_data: Path
     output_dir: Path
-    full_checkpoint: Path
-    adapter_output: Path
+    full_checkpoint: Path | None
+    adapter_output: Path | None
     seeds: tuple[int, ...] = (42, 43, 44)
     steps: int = 180
     train_batch_size: int = 2
@@ -52,8 +53,10 @@ class SFTExperimentConfig:
     lora_rank: int = 4
     lora_alpha: float = 8.0
     lora_dropout: float = 0.0
-    max_new_tokens: int = 24
+    max_new_tokens: int = 64
     device: str = "cpu"
+    strict_checks: bool = False
+    eval_suite: str = "demo"
 
     def validate(self) -> None:
         if self.steps <= 0:
@@ -71,9 +74,9 @@ class SFTExperimentConfig:
             self.full_learning_rate,
             self.lora_learning_rate,
         )
-        if any(rate <= 0 for rate in learning_rates):
+        if any(not math.isfinite(rate) or rate <= 0 for rate in learning_rates):
             raise ValueError("learning rates must be positive")
-        if self.lora_rank <= 0 or self.lora_alpha <= 0:
+        if self.lora_rank <= 0 or not math.isfinite(self.lora_alpha) or self.lora_alpha <= 0:
             raise ValueError("LoRA rank and alpha must be positive")
         if not 0.0 <= self.lora_dropout < 1.0:
             raise ValueError("LoRA dropout must be in [0, 1)")
@@ -83,15 +86,9 @@ class SFTExperimentConfig:
             raise ValueError("device must be 'cpu' or a CUDA device")
         if self.device.startswith("cuda") and not torch.cuda.is_available():
             raise ValueError("CUDA was requested but is not available")
-        artifact_paths = {
-            self.base_checkpoint.resolve(),
-            self.full_checkpoint.resolve(),
-            self.adapter_output.resolve(),
-        }
-        if len(artifact_paths) != 3:
-            raise ValueError(
-                "base_checkpoint, full_checkpoint, and adapter_output must be distinct"
-            )
+        artifact_paths = [p.resolve() for p in (self.base_checkpoint, self.full_checkpoint, self.adapter_output) if p is not None]
+        if len(set(artifact_paths)) != len(artifact_paths):
+            raise ValueError("base_checkpoint, full_checkpoint, and adapter_output must be distinct")
         data_paths = {
             self.train_data.resolve(),
             self.dev_data.resolve(),
@@ -111,7 +108,7 @@ class SFTExperimentConfig:
             "full_checkpoint",
             "adapter_output",
         ):
-            result[key] = privacy_safe_path(result[key], project_root=project_root)
+            result[key] = privacy_safe_path(result[key], project_root=project_root) if result[key] is not None else None
         result["seeds"] = list(self.seeds)
         return result
 
@@ -126,7 +123,9 @@ class BranchResult:
     trainable_parameters: int
     total_parameters: int
     duration_seconds: float
+    status: str = "completed"
     history: list[float] = field(default_factory=list)
+    validation_history: list[dict[str, float]] = field(default_factory=list)
     losses: dict[str, float] = field(default_factory=dict)
     per_example_losses: dict[str, list[float]] = field(default_factory=dict)
     generations: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
@@ -186,6 +185,8 @@ def aggregate_branch_metrics(
     grouped: dict[str, dict[str, list[float]]] = {}
     for branches in runs:
         for branch_name, branch in branches.items():
+            if branch.status != "completed":
+                continue
             destination = grouped.setdefault(branch_name, {})
             for metric_name, value in branch.losses.items():
                 destination.setdefault(metric_name, []).append(float(value))
@@ -255,18 +256,20 @@ def write_run_artifacts(
     """Atomically write the JSON manifest and long-format history CSV."""
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    json_path = output_dir / "sft_comparison.json"
-    csv_path = output_dir / "sft_comparison.csv"
+    stem = "pretraining" if manifest.get("schema") == "learnllm.pretrain-run" else "sft_comparison"
+    json_path = output_dir / f"{stem}.json"
+    csv_path = output_dir / f"{stem}.csv"
     json_temporary = json_path.with_suffix(".json.tmp")
     csv_temporary = csv_path.with_suffix(".csv.tmp")
 
     json_temporary.write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False) + "\n",
         encoding="utf-8",
     )
     json_temporary.replace(json_path)
 
     fieldnames = (
+        "status",
         "seed",
         "step",
         "branch",
@@ -284,6 +287,7 @@ def write_run_artifacts(
             seed = run["seed"]
             for branch_name, branch in sorted(run["branches"].items()):
                 common = {
+                    "status": branch.get("status", "completed"),
                     "seed": seed,
                     "branch": branch_name,
                     "learning_rate": branch["learning_rate"],
@@ -299,5 +303,7 @@ def write_run_artifacts(
                     writer.writerow(
                         {**common, "step": "final", "split": split, "loss": loss}
                     )
+                for item in branch.get("validation_history", []):
+                    writer.writerow({**common, "step": int(item["step"]), "split": "validation", "loss": item["loss"]})
     csv_temporary.replace(csv_path)
     return json_path, csv_path

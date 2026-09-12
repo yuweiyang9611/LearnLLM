@@ -17,7 +17,8 @@
 
 ```powershell
 .\.venv\Scripts\python.exe .\experiments\06_train_tiny_gpt.py --quick
-.\.venv\Scripts\python.exe .\experiments\10_sft_tiny_gpt.py --quick
+$SftRun = ".\outputs\sft\lesson-$(Get-Date -Format yyyyMMdd-HHmmssfff)"
+.\.venv\Scripts\python.exe .\experiments\10_sft_tiny_gpt.py --quick --output-dir $SftRun
 ```
 
 `--quick` 把每个训练分支固定为 30 步，但仍默认运行 seed 42/43/44。所有关键输入和输出都可配置；例如：
@@ -33,7 +34,7 @@
 
 `--help` 还列出 base/full/adapter 路径、三种学习率、LoRA rank/alpha/dropout、生成长度、train batch size 和设备。自定义数据必须保留相应的 `split` 字段，并满足冻结 Tokenizer 与 base `block_size` 的约束。
 
-实验 10 从 `checkpoints/tiny_gpt.pt` 恢复并冻结同一套 Tokenizer 与模型配置，然后从这个 base 独立分叉比较：
+实验 10 默认经 `outputs/pretrain/latest.json` 找到 `base.pt` 并恢复并冻结同一套 Tokenizer 与模型配置，然后从这个 base 独立分叉比较：
 
 | 分支 | 起点 | 更新内容 | 主要用途 |
 |---|---|---|---|
@@ -53,16 +54,17 @@ Full SFT 和 LoRA-SFT 是从同一 base 出发的两种微调方式，不是先�
 实验读取结构化 JSONL，把每条样本格式化为 prompt 与 assistant 回复。每行都有稳定 `id`、`split`、`intent_family`、`evaluation_category`、必要关键词和格式规则。Decoder-only 模型要预测“下一个 token”，所以标签不仅要 mask，还要右移对齐：
 
 ```python
+response_ids = response_ids + [tokenizer.eos_id]
 sequence = prompt_ids + response_ids
 input_ids = sequence[:-1]
 labels = [-100] * (len(prompt_ids) - 1) + response_ids
 ```
 
-`input_ids` 与 `labels` 等长。最后一个 prompt token 负责预测第一个 response token，因此第一个有效 label 位于它的输入位置。交叉熵设置 `ignore_index=-100` 后，prompt 仍是模型可见上下文，但 prompt 目标与右侧 padding 都不贡献监督 loss。
+`input_ids` 与 `labels` 等长。最后一个 prompt token 负责预测第一个 response token，因此第一个有效 label 位于它的输入位置。EOS 是最后一个有效 label，生成时用它决定停止。交叉熵设置 `ignore_index=-100` 后，prompt 仍是模型可见上下文，但 prompt 目标与右侧 padding 都不贡献监督 loss。
 
 为什么不能硬编码“assistant 开始标记”的 token id？因为换一个 Tokenizer 后，标记可能被切成不同数量和不同编号的 token。应动态编码模板或在构造数据时明确边界。
 
-实验 10 会检查所有序列都不超过 base checkpoint 的 `block_size`，并使用 checkpoint 中的冻结 Tokenizer；它不会依据 SFT 数据重建词表。Full SFT 的完整模型权重与 metadata 保存到 `checkpoints/tiny_gpt_sft.pt`，但不含 optimizer 状态，不能直接据此无缝续训。
+实验 10 会检查所有序列都不超过 base checkpoint 的 `block_size`，并使用 checkpoint 中的冻结 Tokenizer；它不会依据 SFT 数据重建词表。Full SFT 的完整模型权重与 metadata 保存到 `outputs/sft/<run-id>/seed-<seed>/full/model.pt`，但不含 optimizer 状态，不能直接据此无缝续训。
 
 ### 1.1 Train/dev/test 协议
 
@@ -147,7 +149,7 @@ PASS: 原权重冻结，低秩参数完成适配，合并前后输出一致。
 
 实验 10 对 train/dev/test 都记录 assistant-only loss 和 greedy 生成，并计算三类透明指标：
 
-- `task_success_rate`：一条回答必须同时命中全部必要关键词并满足全部格式规则才记 1，否则记 0；这是最严格的主指标。
+- `task_success_rate`：一条回答必须命中全部概念组、未命中声明的矛盾规则并满足全部格式规则才记 1，否则记 0；这是最严格的主指标。
 - `keyword_accuracy`：逐条计算已命中必要关键词的比例，再对样本取平均。
 - `format_accuracy`：是否满足句末、最大句数和禁止前缀等全部规则，再对样本取平均。
 
@@ -163,12 +165,12 @@ JSON 中既保留每条 prediction、命中关键词和分数，也按 `seen`、
 
 每次运行会生成四类产物：
 
-- `outputs/sft/<时间>-seeds-.../sft_comparison.json`：带 schema 版本的 manifest，包含 CLI 配置、git/运行环境、数据与 artifact SHA-256、逐 seed/分支/样本结果、跨 seed 汇总、不变量和限制。
+- `outputs/sft/<run-id>/sft_comparison.json`：带 schema 版本的 manifest，包含 CLI 配置、git/运行环境、数据与 artifact SHA-256、逐 seed/分支/样本结果、跨 seed 汇总、不变量和限制。
 - 同目录 `sft_comparison.csv`：长格式逐 step 训练 loss 与各最终 loss，便于画曲线或导入表格。
-- `checkpoints/tiny_gpt_sft.pt`：第一个 seed 的预训练 Full SFT 完整模型权重与 metadata（相对于 adapter-only；不含 optimizer 状态）。
-- `checkpoints/tiny_gpt_lora_adapter.pt`：第一个 seed 的 LoRA A/B 与 metadata，包含 base/data SHA-256、Tokenizer、config、targets、rank、alpha、dropout 和最终指标。
+- `outputs/sft/<run-id>/seed-<seed>/full/model.pt`：每个 seed 的预训练 Full SFT 完整模型权重与 metadata（相对于 adapter-only；不含 optimizer 状态）。
+- `outputs/sft/<run-id>/seed-<seed>/lora/adapter.pt`：每个 seed 的 LoRA A/B 与 metadata，包含 base/data SHA-256、Tokenizer、config、targets、rank、alpha、dropout 和最终指标。
 
-完整 checkpoint 和 adapter 路径都可由 CLI 覆盖。默认文件只保存第一个 seed 的主 artifact；所有 seed 的指标与生成完整进入 JSON，逐步/最终 loss 同时进入 CSV，避免把一个文件误认为跨 seed 平均模型。
+每个 seed 的 random 分支也保存到 `seed-<seed>/random/model.pt`。run 根目录携带独立 base 与语料副本、数据快照和 SHA-256；整个目录可搬迁。可选 `--full-checkpoint`、`--adapter-output` 仅额外导出首 seed，已有目标拒绝覆盖。非空 run 目录也拒绝复用。
 
 ### 6.1 严格恢复与独立推理
 
@@ -178,9 +180,8 @@ adapter 不是完整模型。实验 10 在保存后已经用严格 loader 独立
 
 ```powershell
 .\.venv\Scripts\python.exe .\experiments\07_generate.py `
-  --base-checkpoint .\checkpoints\tiny_gpt.pt `
-  --adapter .\checkpoints\tiny_gpt_lora_adapter.pt `
-  --prompt "LoRA 为什么节省参数？" --tokens 80
+  --run-dir $SftRun --branch lora --seed 42 `
+  --instruction "LoRA 为什么节省参数？" --tokens 64
 ```
 
 `--base-checkpoint` 和 `--adapter` 必须成对传入，且不能与完整模型的 `--checkpoint` 同时使用。
@@ -226,7 +227,7 @@ rejected: 只说“它让模型更聪明”
 - 把 LoRA 文件当完整模型：适配器通常依赖正确版本的基础模型。
 - 先做 Full SFT 再比较 LoRA：两个分支起点不同，参数效率与原语料保持度对比失去意义。
 - 用指令数据重建 Tokenizer：相同 token id 可能改变含义；必须使用 base checkpoint 内的冻结状态。
-- 复用数据版本不匹配的旧 base：实验 10 会校验数据 SHA-256，并要求重新运行实验 06。
+- 使用版本 1 的旧 base：请重跑实验 06→10；新评测不要求修改 base，但字符覆盖与上下文上限仍须满足。
 - 用 dev 之外的数据调参：test 只在训练完成后评一次，不能反复查看后再选择配置。
 - 只看训练 loss：同时检查 dev/test 任务指标、原语料验证 loss、冻结参数和 adapter 往返。
 
@@ -237,3 +238,23 @@ rejected: 只说“它让模型更聪明”
 3. SFT 和 LoRA 能否同时使用？分别描述数据目标与参数集合。
 4. 为什么低秩适配成功不等于解决灾难性遗忘、事实错误或安全问题？
 5. 为什么 Full SFT 与 LoRA-SFT 必须各自从同一个 base checkpoint 分叉？
+
+## 版本 2：失败记录和扩展评测
+
+训练过程逐步保存历史，各分支及 seed 单独保存产物。`status` 区分 running/completed/failed/interrupted；`quality_status` 与逐项 `checks` 记录下降幅度、阈值、实际值和原因。效果不佳不再触发中途退出，所有 seed 继续完成；`--strict-checks` 在写完记录后返回 2。模型执行错误和冻结约束破坏属于失败，返回 1；用户中断返回 130。部分分支保留历史，但不会进入已完成分支的均值统计。`completed_seeds` 给出完整完成的 seed，单个指标的 `runs` 给出实际分母。
+
+默认演示集仍为 4/4/4。`--eval-suite extended` 使用原有 4 条训练样本，新增 20 条 dev 和 40 条 test；测试专属意图不进入 dev。数据采用现有字符词表，模型知识没有因扩展评测而增加。每次报告分别记录数据 SHA-256 和评分实现 SHA-256。
+
+```powershell
+.\.venv\Scripts\python.exe .\experiments\10_sft_tiny_gpt.py --quick --eval-suite extended --seed 42
+```
+
+每条样本的 `required_concepts` 是概念组列表：组内表达任选一个，组间必须全部满足；未声明时沿用原关键词。`contradictions` 声明已知矛盾表达。任务成功要求概念完整、未命中矛盾、格式正确；原始关键词准确率仍独立报告。逐样本结果列出 `missing_concepts`、`matched_contradictions`、`format_failures` 与生成结束原因 `stop_reason`（eos/length）。
+
+例如“验证集损失帮助发现过度拟合。”可通过同义规则，而“验证损失不能帮助发现过拟合。”会命中否定反例。规则只覆盖已声明的表达，不能识别任意语义矛盾，不能当作人工理解的替代。固定评分器反例位于 `data/evaluation_cases.jsonl`。
+
+每次运行自动生成 PNG/SVG 原始 loss 曲线、可训练参数量与训练耗时图。耗时包含训练循环和记录开销，不能当作纯算子基准；不同 seed 汇总为均值与总体标准差。重新绘图无需模型：
+
+```powershell
+.\.venv\Scripts\python.exe .\scripts\plot_experiments.py $SftRun --output-dir .\outputs\plots\lesson
+```

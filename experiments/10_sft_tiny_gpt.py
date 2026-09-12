@@ -4,28 +4,28 @@ from __future__ import annotations
 
 import argparse
 import copy
-from dataclasses import asdict
+import shutil
+import sys
+from dataclasses import asdict, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import torch
 
-from _common import CHECKPOINT_DIR, DATA_DIR, PROJECT_ROOT, seed_everything
+from _common import DATA_DIR, PROJECT_ROOT, seed_everything
 from learn_llm.artifacts import (
     LORA_ADAPTER_FORMAT_VERSION,
     TinyGPTBundle,
     load_lora_model,
     load_tiny_gpt_checkpoint,
 )
-from learn_llm.evaluation import EvaluationExample, load_evaluation_jsonl
+from learn_llm.evaluation import EVALUATION_RULES_VERSION, EvaluationExample, load_evaluation_jsonl, normalize_text
 from learn_llm.experiment_tracking import (
     BranchResult,
     SFTExperimentConfig,
-    build_run_manifest,
     privacy_safe_path,
     sha256_file,
-    write_run_artifacts,
 )
 from learn_llm.lora import (
     inject_lora,
@@ -44,6 +44,7 @@ from learn_llm.sft_pipeline import (
     train_branch,
 )
 from learn_llm.training import save_checkpoint
+from learn_llm.run_management import RunRecorder, latest_base, unique_run_dir
 
 
 DEFAULT_SEEDS = (42, 43, 44)
@@ -64,7 +65,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--base-checkpoint",
         type=Path,
-        default=CHECKPOINT_DIR / "tiny_gpt.pt",
+        default=None,
         help="实验 06 生成的预训练 checkpoint",
     )
     parser.add_argument(
@@ -84,12 +85,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--full-checkpoint",
         type=Path,
-        default=CHECKPOINT_DIR / "tiny_gpt_sft.pt",
+        default=None,
     )
     parser.add_argument(
         "--adapter-output",
         type=Path,
-        default=CHECKPOINT_DIR / "tiny_gpt_lora_adapter.pt",
+        default=None,
     )
     parser.add_argument("--random-learning-rate", type=float, default=1e-2)
     parser.add_argument("--full-learning-rate", type=float, default=3e-3)
@@ -97,10 +98,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--lora-rank", type=int, default=4)
     parser.add_argument("--lora-alpha", type=float, default=8.0)
     parser.add_argument("--lora-dropout", type=float, default=0.0)
-    parser.add_argument("--max-new-tokens", type=int, default=24)
+    parser.add_argument("--max-new-tokens", type=int, default=64)
     parser.add_argument("--train-batch-size", type=int, default=2)
     parser.add_argument("--device", default="cpu", help="cpu、cuda 或 cuda:N")
-    return parser.parse_args(argv)
+    parser.add_argument("--strict-checks", action="store_true")
+    parser.add_argument("--eval-suite", choices=("demo", "extended"), default="demo")
+    args = parser.parse_args(argv)
+    if args.eval_suite == "extended":
+        if args.dev_data == DATA_DIR / "tiny_instructions_dev.jsonl":
+            args.dev_data = DATA_DIR / "extended_instructions_dev.jsonl"
+        if args.test_data == DATA_DIR / "tiny_instructions_test.jsonl":
+            args.test_data = DATA_DIR / "extended_instructions_test.jsonl"
+    return args
 
 
 def _default_output_dir(seeds: tuple[int, ...]) -> Path:
@@ -118,13 +127,13 @@ def build_config(args: argparse.Namespace) -> SFTExperimentConfig:
         else DEFAULT_SEEDS
     )
     config = SFTExperimentConfig(
-        base_checkpoint=args.base_checkpoint.resolve(),
+        base_checkpoint=args.base_checkpoint.resolve() if args.base_checkpoint else None,
         train_data=args.train_data.resolve(),
         dev_data=args.dev_data.resolve(),
         test_data=args.test_data.resolve(),
         output_dir=(args.output_dir or _default_output_dir(seeds)).resolve(),
-        full_checkpoint=args.full_checkpoint.resolve(),
-        adapter_output=args.adapter_output.resolve(),
+        full_checkpoint=args.full_checkpoint.resolve() if args.full_checkpoint else None,
+        adapter_output=args.adapter_output.resolve() if args.adapter_output else None,
         seeds=seeds,
         steps=30 if args.quick else args.steps,
         train_batch_size=args.train_batch_size,
@@ -136,6 +145,8 @@ def build_config(args: argparse.Namespace) -> SFTExperimentConfig:
         lora_dropout=args.lora_dropout,
         max_new_tokens=args.max_new_tokens,
         device=args.device,
+        strict_checks=args.strict_checks,
+        eval_suite=args.eval_suite,
     )
     config.validate()
     return config
@@ -162,7 +173,9 @@ def _project_path(path: Path) -> str:
 def _verify_recorded_repository_data(bundle: TinyGPTBundle) -> None:
     current: dict[str, str] = {}
     for name in bundle.data_sha256:
-        path = PROJECT_ROOT / name
+        path = (bundle.checkpoint_path.parent / name).resolve()
+        if not path.is_relative_to(bundle.checkpoint_path.parent.resolve()):
+            raise ValueError("base data path escapes its directory")
         if name.startswith("external/") or not path.is_file():
             raise ValueError(f"cannot verify base checkpoint data file: {name}")
         current[name] = sha256_file(path)
@@ -211,70 +224,6 @@ def _checkpoint_metadata(
     }
 
 
-def _save_primary_artifacts(
-    *,
-    bundle: TinyGPTBundle,
-    config: SFTExperimentConfig,
-    full_model: TinyGPT,
-    lora_model: TinyGPT,
-    full_result: BranchResult,
-    lora_result: BranchResult,
-    lora_targets: tuple[str, ...],
-    run_data_sha256: dict[str, str],
-    test_input_ids: torch.Tensor,
-) -> None:
-    save_checkpoint(
-        config.full_checkpoint,
-        full_model,
-        step=config.steps,
-        metadata=_checkpoint_metadata(
-            bundle=bundle,
-            config=config,
-            result=full_result,
-            objective="pretrained full-parameter assistant-only SFT",
-            run_data_sha256=run_data_sha256,
-        ),
-    )
-
-    adapter_metadata = _checkpoint_metadata(
-        bundle=bundle,
-        config=config,
-        result=lora_result,
-        objective="pretrained LoRA-only assistant SFT",
-        run_data_sha256=run_data_sha256,
-    )
-    adapter_metadata.update(
-        {
-            "targets": list(lora_targets),
-            "rank": config.lora_rank,
-            "alpha": config.lora_alpha,
-            "dropout": config.lora_dropout,
-        }
-    )
-    config.adapter_output.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(
-        {
-            "format_version": LORA_ADAPTER_FORMAT_VERSION,
-            "adapter_state": lora_adapter_state_dict(lora_model),
-            "metadata": adapter_metadata,
-        },
-        config.adapter_output,
-    )
-
-    restored = load_lora_model(
-        config.base_checkpoint,
-        config.adapter_output,
-        map_location="cpu",
-        expected_data_sha256=bundle.data_sha256,
-    )
-    source = copy.deepcopy(lora_model).to("cpu").eval()
-    with torch.no_grad():
-        expected_logits, _ = source(test_input_ids.cpu())
-        actual_logits, _ = restored.model(test_input_ids.cpu())
-    if not torch.equal(expected_logits, actual_logits):
-        raise AssertionError("independent LoRA reload did not reproduce logits")
-
-
 def _print_summary(
     config: SFTExperimentConfig,
     seed_runs: list[dict[str, BranchResult]],
@@ -305,259 +254,139 @@ def _print_summary(
         )
 
 
-def main() -> None:
-    config = build_config(parse_args())
-    examples_by_split = {
-        "train": load_split(config.train_data, "train"),
-        "dev": load_split(config.dev_data, "dev"),
-        "test": load_split(config.test_data, "test"),
-    }
-    all_ids = [item.example_id for rows in examples_by_split.values() for item in rows]
-    if len(all_ids) != len(set(all_ids)):
-        raise ValueError("example IDs must be unique across train/dev/test")
-
-    bundle = load_tiny_gpt_checkpoint(
-        config.base_checkpoint,
-        map_location=config.device,
-    )
+def run_comparison(config, recorder):
+    for destination in (config.full_checkpoint, config.adapter_output):
+        if destination is not None and (destination.exists() or destination.is_relative_to(recorder.directory)):
+            raise FileExistsError(f"export must be a new path outside the run: {destination}")
+    base_path = config.base_checkpoint or latest_base(PROJECT_ROOT / "outputs" / "pretrain")
+    bundle = load_tiny_gpt_checkpoint(base_path, map_location=config.device)
     _verify_recorded_repository_data(bundle)
-    pairs_by_split = {name: _pairs(rows) for name, rows in examples_by_split.items()}
-    for split, pairs in pairs_by_split.items():
-        require_tokenizer_coverage(
-            bundle.tokenizer,
-            pairs,
-            dataset_name=_project_path(getattr(config, f"{split}_data")),
-        )
-    prepared = {
-        split: build_instruction_batch(
-            bundle.tokenizer,
-            pairs,
-            block_size=bundle.config.block_size,
-            device=config.device,
-        )
-        for split, pairs in pairs_by_split.items()
-    }
-    sequences_by_split = {name: value[0] for name, value in prepared.items()}
-    batches_by_split = {name: value[1] for name, value in prepared.items()}
-    run_data_sha256 = data_file_sha256(
-        (
-            DATA_DIR / "tiny_corpus.txt",
-            config.train_data,
-            config.dev_data,
-            config.test_data,
-        ),
-        project_root=PROJECT_ROOT,
-    )
-
-    seed_runs: list[dict[str, BranchResult]] = []
-    invariant_runs: list[dict[str, Any]] = []
-    primary_saved = False
+    # Carry all immutable inputs required to reproduce this run alongside the base.
+    for name in bundle.data_sha256:
+        source = (bundle.checkpoint_path.parent / name).resolve()
+        if not source.is_relative_to(bundle.checkpoint_path.parent.resolve()):
+            raise ValueError("base data path escapes its directory")
+        target = recorder.directory / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, target)
+    copied_base = recorder.directory / "base.pt"
+    shutil.copyfile(base_path, copied_base)
+    config = replace(config, base_checkpoint=copied_base)
+    bundle = load_tiny_gpt_checkpoint(copied_base, map_location=config.device)
+    recorder.manifest["config"] = config.to_manifest(project_root=PROJECT_ROOT)
+    recorder.manifest["config"]["model"] = asdict(bundle.config)
+    recorder.artifact("base", copied_base, branch="base", model_config=asdict(bundle.config))
+    examples = {split: load_split(getattr(config, f"{split}_data"), split) for split in ("train", "dev", "test")}
+    ids = [row.example_id for rows in examples.values() for row in rows]
+    prompts = [normalize_text(row.instruction) for rows in examples.values() for row in rows]
+    if len(set(ids)) != len(ids) or len(set(prompts)) != len(prompts):
+        raise ValueError("IDs and normalized questions must be unique across train/dev/test")
+    pairs = {split: _pairs(rows) for split, rows in examples.items()}
+    prepared = {}
+    for split in examples:
+        require_tokenizer_coverage(bundle.tokenizer, pairs[split], dataset_name=split)
+        prepared[split] = build_instruction_batch(bundle.tokenizer, pairs[split], block_size=bundle.config.block_size, device=config.device)
+    sequences = {split: value[0] for split, value in prepared.items()}
+    batches = {split: value[1] for split, value in prepared.items()}
+    data_hashes = data_file_sha256([config.train_data, config.dev_data, config.test_data], project_root=PROJECT_ROOT)
+    recorder.manifest["data_sha256"] = data_hashes
+    recorder.manifest["evaluation_rules_version"] = EVALUATION_RULES_VERSION
+    recorder.manifest["evaluation_rules_sha256"] = sha256_file(PROJECT_ROOT / "src/learn_llm/evaluation.py")
+    for split in examples:
+        copied_data = recorder.directory / "data" / f"{split}.jsonl"
+        copied_data.parent.mkdir(exist_ok=True)
+        shutil.copyfile(getattr(config, f"{split}_data"), copied_data)
+        recorder.artifact(f"data.{split}", copied_data)
+    corpus_path = recorder.directory / bundle.metadata["corpus"] if "corpus" in bundle.metadata else recorder.directory / "corpus.txt"
+    common = dict(tokenizer=bundle.tokenizer, examples_by_split=examples, sequences_by_split=sequences,
+                  batches_by_split=batches, corpus_path=corpus_path, max_new_tokens=config.max_new_tokens, device=config.device)
     for seed in config.seeds:
         seed_everything(seed)
         base_model = copy.deepcopy(bundle.model).eval()
         base_model.requires_grad_(False)
-        full_model = copy.deepcopy(bundle.model)
-        full_model.requires_grad_(True)
-        lora_model = copy.deepcopy(bundle.model)
-        seed_everything(seed + 1)
-        random_model = TinyGPT(bundle.config).to(config.device)
-        train_batch = batches_by_split["train"]
-        base_train_loss = evaluate_assistant_loss(base_model, train_batch)
-        random_initial_loss = evaluate_assistant_loss(random_model, train_batch)
+        base_result = evaluate_branch(name="base", seed=seed, model=base_model, learning_rate=None,
+                                      history=[], duration_seconds=0., **common)
+        recorder.branch(base_result)
+        for name in ("random", "full", "lora"):
+            seed_everything(seed + (1 if name == "random" else 2 if name == "lora" else 0))
+            model = TinyGPT(bundle.config).to(config.device) if name == "random" else copy.deepcopy(bundle.model)
+            model.requires_grad_(True)
+            targets = attention_lora_targets(bundle.config)
+            if name == "lora":
+                inject_lora(model, targets, rank=config.lora_rank, alpha=config.lora_alpha, dropout=config.lora_dropout)
+                if not lora_parameter_names(model):
+                    raise RuntimeError("empty LoRA trainable set")
+                model.eval()
+                with torch.no_grad():
+                    before, _ = base_model(batches["train"].input_ids)
+                    after, _ = model(batches["train"].input_ids)
+                if not torch.allclose(before, after, atol=1e-7, rtol=0):
+                    raise RuntimeError("LoRA injection changed initial logits")
+            snapshot = {key: parameter.detach().clone() for key, parameter in model.named_parameters()}
+            initial_loss = evaluate_assistant_loss(model, batches["train"])
+            rate = getattr(config, f"{name}_learning_rate")
+            progress = BranchResult(name=name, seed=seed, learning_rate=rate, status="running",
+                                    trainable_parameters=model.parameter_count(trainable_only=True),
+                                    total_parameters=model.parameter_count(), duration_seconds=0.)
+            recorder.branch(progress)
+            history, duration = train_branch(model, batches["train"], steps=config.steps, learning_rate=rate,
+                sequences=sequences["train"], batch_size=config.train_batch_size, sampling_seed=seed + 100,
+                device=config.device, on_step=lambda step, loss, elapsed: recorder.step(progress, step, loss, elapsed))
+            if name == "lora" and any(not torch.equal(p.detach(), snapshot[k]) for k, p in model.named_parameters() if not p.requires_grad):
+                raise RuntimeError("LoRA training changed frozen parameters")
+            result = evaluate_branch(name=name, seed=seed, model=model, learning_rate=rate,
+                                     history=history, duration_seconds=duration, **common)
+            result.status = "running"
+            recorder.branch(result)
+            factor = {"random": .85, "full": .55, "lora": .90}[name]
+            recorder.check("train_loss_decline", result.losses["train_assistant_loss"], initial_loss * factor, seed=seed, branch=name)
+            recorder.check("parameter_update", parameter_l2_change(model, snapshot), 0., relation="gt", seed=seed, branch=name)
+            if name in ("full", "lora"):
+                for index, (old, new) in enumerate(zip(base_result.per_example_losses["train"], result.per_example_losses["train"])):
+                    recorder.check(f"training_example_{index}", new, old, seed=seed, branch=name)
+            destination = recorder.directory / f"seed-{seed}" / name / ("adapter.pt" if name == "lora" else "model.pt")
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            metadata = _checkpoint_metadata(bundle=bundle, config=config, result=result, objective=f"{name} assistant-only SFT with EOS", run_data_sha256=data_hashes)
+            if name == "lora":
+                metadata.update(targets=list(targets), rank=config.lora_rank, alpha=config.lora_alpha, dropout=config.lora_dropout)
+                torch.save({"format_version": LORA_ADAPTER_FORMAT_VERSION, "adapter_state": lora_adapter_state_dict(model), "metadata": metadata}, destination)
+                restored = load_lora_model(copied_base, destination).model
+            else:
+                save_checkpoint(destination, model, step=config.steps, metadata=metadata)
+                restored = load_tiny_gpt_checkpoint(destination).model
+            source = copy.deepcopy(model).cpu().eval()
+            with torch.no_grad():
+                expected, _ = source(batches["train"].input_ids.cpu())
+                actual, _ = restored(batches["train"].input_ids.cpu())
+            if not torch.equal(expected, actual):
+                raise RuntimeError("independent reload does not reproduce logits")
+            recorder.artifact(f"{seed}.{name}", destination, seed=seed, branch=name, model_config=asdict(bundle.config))
+            result.status = "completed"
+            recorder.flush()
+            export = config.full_checkpoint if name == "full" else config.adapter_output if name == "lora" else None
+            if seed == config.seeds[0] and export is not None:
+                export.parent.mkdir(parents=True, exist_ok=True)
+                with export.open("xb") as output, destination.open("rb") as source_file:
+                    shutil.copyfileobj(source_file, output)
+    recorder.finish()
+    _print_summary(config, list(recorder.branches.values()), recorder.manifest)
+    print(f"Run: {recorder.directory}")
+    print(f'Inference: python experiments/07_generate.py --run-dir "{recorder.directory}" --branch lora --instruction "为什么需要因果掩码？"')
+    return recorder.exit_code(config.strict_checks)
 
-        full_snapshot = {
-            name: parameter.detach().clone()
-            for name, parameter in full_model.named_parameters()
-        }
-        full_history, full_duration = train_branch(
-            full_model,
-            train_batch,
-            steps=config.steps,
-            learning_rate=config.full_learning_rate,
-            sequences=sequences_by_split["train"],
-            batch_size=config.train_batch_size,
-            sampling_seed=seed + 100,
-            device=config.device,
-        )
-        random_history, random_duration = train_branch(
-            random_model,
-            train_batch,
-            steps=config.steps,
-            learning_rate=config.random_learning_rate,
-            sequences=sequences_by_split["train"],
-            batch_size=config.train_batch_size,
-            sampling_seed=seed + 100,
-            device=config.device,
-        )
 
-        lora_targets = attention_lora_targets(bundle.config)
-        seed_everything(seed + 2)
-        inject_lora(
-            lora_model,
-            lora_targets,
-            rank=config.lora_rank,
-            alpha=config.lora_alpha,
-            dropout=config.lora_dropout,
-        )
-        trainable_names = lora_parameter_names(lora_model)
-        if not trainable_names or any(
-            not (name.endswith(".lora_A") or name.endswith(".lora_B"))
-            for name in trainable_names
-        ):
-            raise AssertionError(f"invalid LoRA trainable set: {trainable_names}")
-        frozen_snapshot = {
-            name: parameter.detach().clone()
-            for name, parameter in lora_model.named_parameters()
-            if not parameter.requires_grad
-        }
-        adapter_before = lora_adapter_state_dict(lora_model)
-        with torch.no_grad():
-            base_logits, _ = base_model(train_batch.input_ids)
-            initial_lora_logits, _ = lora_model(train_batch.input_ids)
-        initial_lora_delta = float(
-            (base_logits - initial_lora_logits).abs().max().item()
-        )
-        if initial_lora_delta > 1e-7:
-            raise AssertionError(
-                f"LoRA injection changed initial logits: {initial_lora_delta:.3e}"
-            )
-        lora_history, lora_duration = train_branch(
-            lora_model,
-            train_batch,
-            steps=config.steps,
-            learning_rate=config.lora_learning_rate,
-            sequences=sequences_by_split["train"],
-            batch_size=config.train_batch_size,
-            sampling_seed=seed + 100,
-            device=config.device,
-        )
-        adapter_after = lora_adapter_state_dict(lora_model)
-        changed_frozen = [
-            name
-            for name, parameter in lora_model.named_parameters()
-            if not parameter.requires_grad
-            and not torch.equal(parameter.detach(), frozen_snapshot[name])
-        ]
-        if changed_frozen:
-            raise AssertionError(f"LoRA training changed frozen parameters: {changed_frozen}")
-        if not any(
-            not torch.equal(adapter_before[name], adapter_after[name])
-            for name in adapter_before
-        ):
-            raise AssertionError("LoRA optimizer did not update adapter parameters")
-
-        common_evaluation = {
-            "tokenizer": bundle.tokenizer,
-            "examples_by_split": examples_by_split,
-            "sequences_by_split": sequences_by_split,
-            "batches_by_split": batches_by_split,
-            "corpus_path": DATA_DIR / "tiny_corpus.txt",
-            "max_new_tokens": config.max_new_tokens,
-            "device": config.device,
-        }
-        branches = {
-            "base": evaluate_branch(
-                name="base", seed=seed, model=base_model, learning_rate=None,
-                history=[], duration_seconds=0.0, **common_evaluation,
-            ),
-            "random": evaluate_branch(
-                name="random", seed=seed, model=random_model,
-                learning_rate=config.random_learning_rate,
-                history=random_history, duration_seconds=random_duration,
-                **common_evaluation,
-            ),
-            "full": evaluate_branch(
-                name="full", seed=seed, model=full_model,
-                learning_rate=config.full_learning_rate,
-                history=full_history, duration_seconds=full_duration,
-                **common_evaluation,
-            ),
-            "lora": evaluate_branch(
-                name="lora", seed=seed, model=lora_model,
-                learning_rate=config.lora_learning_rate,
-                history=lora_history, duration_seconds=lora_duration,
-                **common_evaluation,
-            ),
-        }
-        full_change = parameter_l2_change(full_model, full_snapshot)
-        if branches["random"].losses["train_assistant_loss"] >= random_initial_loss * 0.85:
-            raise AssertionError("random-init SFT loss did not decline enough")
-        if branches["full"].losses["train_assistant_loss"] >= base_train_loss * 0.55:
-            raise AssertionError("Full SFT loss did not decline enough")
-        if branches["lora"].losses["train_assistant_loss"] >= base_train_loss * 0.90:
-            raise AssertionError("LoRA-SFT loss did not decline enough")
-        if full_change <= 1e-3:
-            raise AssertionError("Full SFT did not update pretrained parameters")
-        for branch_name in ("full", "lora"):
-            if any(
-                after >= before
-                for before, after in zip(
-                    branches["base"].per_example_losses["train"],
-                    branches[branch_name].per_example_losses["train"],
-                )
-            ):
-                raise AssertionError(
-                    f"{branch_name} SFT failed to improve every training example"
-                )
-
-        invariant_runs.append(
-            {
-                "seed": seed,
-                "lora_initial_max_logit_delta": initial_lora_delta,
-                "lora_frozen_parameters_unchanged": True,
-                "full_parameter_l2_change": full_change,
-                "test_evaluated_after_training_only": True,
-            }
-        )
-        if not primary_saved:
-            _save_primary_artifacts(
-                bundle=bundle,
-                config=config,
-                full_model=full_model,
-                lora_model=lora_model,
-                full_result=branches["full"],
-                lora_result=branches["lora"],
-                lora_targets=lora_targets,
-                run_data_sha256=run_data_sha256,
-                test_input_ids=batches_by_split["test"].input_ids,
-            )
-            invariant_runs[-1]["independent_lora_reload_exact"] = True
-            primary_saved = True
-        seed_runs.append(branches)
-
-    manifest = build_run_manifest(
-        project_root=PROJECT_ROOT,
-        config=config,
-        data_sha256=run_data_sha256,
-        base_sha256=bundle.checkpoint_sha256,
-        seed_runs=seed_runs,
-        invariants={"per_seed": invariant_runs},
-    )
-    manifest["artifacts"].update(
-        {
-            "full_checkpoint": {
-                "path": _project_path(config.full_checkpoint),
-                "sha256": sha256_file(config.full_checkpoint),
-                "seed": config.seeds[0],
-            },
-            "lora_adapter": {
-                "path": _project_path(config.adapter_output),
-                "sha256": sha256_file(config.adapter_output),
-                "seed": config.seeds[0],
-            },
-        }
-    )
-    json_path, csv_path = write_run_artifacts(config.output_dir, manifest)
-    _print_summary(config, seed_runs, manifest)
-    print(f"\nFull checkpoint: {_project_path(config.full_checkpoint)}")
-    print(f"LoRA adapter:    {_project_path(config.adapter_output)}")
-    print(f"JSON manifest:   {_project_path(json_path)}")
-    print(f"CSV history:     {_project_path(csv_path)}")
-    print(
-        "PASS: train/dev/test are isolated; all seeds completed; the primary "
-        "adapter was reloaded independently with exact logits."
-    )
+def main():
+    args = parse_args()
+    args.output_dir = args.output_dir or unique_run_dir(PROJECT_ROOT / "outputs/sft")
+    raw_config = {key: privacy_safe_path(value, project_root=PROJECT_ROOT) if isinstance(value, Path) else value for key, value in vars(args).items()}
+    recorder = RunRecorder(args.output_dir, kind="sft-comparison", config=raw_config, project_root=PROJECT_ROOT)
+    try:
+        return run_comparison(build_config(args), recorder)
+    except (Exception, KeyboardInterrupt) as error:
+        recorder.finish(error)
+        print(f"{type(error).__name__}: {error}; records: {recorder.directory}", file=sys.stderr)
+        return 130 if isinstance(error, KeyboardInterrupt) else 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

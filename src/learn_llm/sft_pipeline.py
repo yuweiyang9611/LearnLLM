@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import math
 import time
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
 
 import torch
@@ -129,9 +129,10 @@ def greedy_completion(
     tokenizer: CharTokenizer,
     instruction: str,
     *,
-    max_new_tokens: int = 24,
+    max_new_tokens: int = 64,
     device: torch.device | str = "cpu",
-) -> str:
+    return_details: bool = False,
+) -> str | tuple[str, str]:
     prompt_ids = tokenizer.encode(
         format_instruction_prompt(instruction),
         return_tensor=True,
@@ -142,8 +143,12 @@ def greedy_completion(
         prompt_ids.unsqueeze(0),
         max_new_tokens=max_new_tokens,
         do_sample=False,
+        eos_token_id=tokenizer.eos_id,
     )
-    return tokenizer.decode(generated[0, prompt_ids.numel() :].cpu())
+    completion = generated[0, prompt_ids.numel():].cpu()
+    text = tokenizer.decode(completion, skip_special_tokens=True)
+    reason = "eos" if tokenizer.eos_id is not None and (completion == tokenizer.eos_id).any() else "length"
+    return (text, reason) if return_details else text
 
 
 @torch.no_grad()
@@ -221,9 +226,12 @@ def train_branch(
     batch_size: int | None = None,
     sampling_seed: int | None = None,
     device: torch.device | str = "cpu",
+    on_step: Callable[[int, float, float], None] | None = None,
 ) -> tuple[list[float], float]:
     """Train on a fixed batch or a reproducible stochastic sequence stream."""
 
+    if steps <= 0:
+        raise ValueError("steps must be positive")
     started = time.perf_counter()
     if sequences is None:
         history = train_sft_steps(
@@ -231,6 +239,7 @@ def train_branch(
             batch,
             steps=steps,
             learning_rate=learning_rate,
+            on_step=(lambda step, loss: on_step(step, loss, time.perf_counter() - started)) if on_step else None,
         )
     else:
         if not sequences:
@@ -246,7 +255,7 @@ def train_branch(
         )
         generator = torch.Generator().manual_seed(sampling_seed)
         history = []
-        for _ in range(steps):
+        for step in range(steps):
             indices = torch.randint(
                 len(sequences),
                 (batch_size,),
@@ -266,6 +275,8 @@ def train_branch(
                     optimizer=optimizer,
                 )
             )
+            if on_step is not None:
+                on_step(step + 1, history[-1], time.perf_counter() - started)
     return history, time.perf_counter() - started
 
 
@@ -313,16 +324,18 @@ def evaluate_branch(
     generations: dict[str, list[dict[str, object]]] = {}
     task_metrics: dict[str, dict[str, float]] = {}
     for split, examples in examples_by_split.items():
-        predictions = {
+        completions = {
             example.example_id: greedy_completion(
                 model,
                 tokenizer,
                 example.instruction,
                 max_new_tokens=max_new_tokens,
                 device=device,
+                return_details=True,
             )
             for example in examples
         }
+        predictions = {key: value[0] for key, value in completions.items()}
         report = evaluate_predictions(examples, predictions)
         result_by_id = {result.example_id: result for result in report.results}
         generations[split] = [
@@ -333,6 +346,10 @@ def evaluate_branch(
                 "instruction": example.instruction,
                 "reference_response": example.reference_response,
                 "prediction": predictions[example.example_id],
+                "stop_reason": completions[example.example_id][1],
+                "missing_concepts": result_by_id[example.example_id].missing_concepts,
+                "matched_contradictions": result_by_id[example.example_id].matched_contradictions,
+                "format_failures": result_by_id[example.example_id].format_failures,
                 "required_keywords": list(example.required_keywords),
                 "matched_keywords": list(
                     result_by_id[example.example_id].matched_keywords

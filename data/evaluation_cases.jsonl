@@ -1,0 +1,6 @@
+{"example_id": "test-validation-01", "prediction": "验证损失可以帮助发现过拟合。", "expected": 1, "kind": "correct"}
+{"example_id": "test-validation-01", "prediction": "验证集损失帮助发现过度拟合。", "expected": 1, "kind": "synonym"}
+{"example_id": "test-validation-01", "prediction": "验证损失不能帮助发现过拟合。", "expected": 0, "kind": "negation"}
+{"example_id": "test-validation-01", "prediction": "验证损失帮助发现过拟合，但验证损失没有作用。", "expected": 0, "kind": "contradiction"}
+{"example_id": "test-validation-01", "prediction": "验证损失帮助发现过拟合", "expected": 0, "kind": "format"}
+{"example_id": "test-validation-01", "prediction": "验证损失有作用。", "expected": 0, "kind": "missing_concept"}
