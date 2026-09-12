@@ -14,7 +14,7 @@ dependencies = [
     "numpy==2.4.6",
     # The wheel metadata must use the public version. requirements.txt keeps
     # the CPU-only index and +cpu build for the course environment.
-    "torch==2.14.0+cpu",
+    "torch==2.14.0",
     "matplotlib==3.11.2",
 ]
 
