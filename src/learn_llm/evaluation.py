@@ -19,6 +19,7 @@ from typing import Any
 
 
 VALID_SPLITS = frozenset({"train", "dev", "test"})
+EVALUATION_RULES_VERSION = 2
 VALID_EVALUATION_CATEGORIES = frozenset(
     {"seen", "paraphrase", "new_intent"}
 )
@@ -114,9 +115,15 @@ class EvaluationExample:
     reference_response: str
     required_keywords: tuple[str, ...]
     format_requirements: FormatRequirements
+    required_concepts: tuple[tuple[str, ...], ...] = ()
+    contradictions: tuple[str, ...] = ()
 
     @classmethod
     def from_mapping(cls, record: Mapping[str, Any]) -> EvaluationExample:
+        concepts = record.get("required_concepts", [])
+        if not isinstance(concepts, list):
+            raise ValueError("required_concepts must be a list of synonym groups")
+        parsed_concepts = tuple(_string_tuple(group, field="concept", allow_empty=False) for group in concepts)
         split = _non_empty_string(record.get("split"), field="split")
         if split not in VALID_SPLITS:
             raise ValueError(f"unknown split: {split!r}")
@@ -147,6 +154,8 @@ class EvaluationExample:
             format_requirements=FormatRequirements.from_mapping(
                 record.get("format_requirements")
             ),
+            required_concepts=parsed_concepts,
+            contradictions=_string_tuple(record.get("contradictions", []), field="contradictions", allow_empty=True),
         )
 
 
@@ -159,6 +168,9 @@ class EvaluationResult:
     keyword_accuracy: float
     format_accuracy: float
     matched_keywords: tuple[str, ...]
+    missing_concepts: tuple[tuple[str, ...], ...] = ()
+    matched_contradictions: tuple[str, ...] = ()
+    format_failures: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -295,7 +307,18 @@ def evaluate_prediction(
     found = matched_keywords(prediction, example.required_keywords)
     keyword_score = len(found) / len(example.required_keywords)
     format_score = format_accuracy(prediction, example.format_requirements)
-    task_success = float(keyword_score == 1.0 and format_score == 1.0)
+    normalized = normalize_text(prediction)
+    concepts = example.required_concepts or tuple((word,) for word in example.required_keywords)
+    missing = tuple(group for group in concepts if not any(normalize_text(word) in normalized for word in group))
+    contradictions = tuple(rule for rule in example.contradictions if normalize_text(rule) in normalized)
+    failures: list[str] = []
+    rules = example.format_requirements
+    if rules.must_end_with and not prediction.strip().endswith(rules.must_end_with):
+        failures.append("must_end_with")
+    if rules.max_sentences is not None and len([part for part in _SENTENCE_END.split(prediction.strip()) if part.strip()]) > rules.max_sentences:
+        failures.append("max_sentences")
+    failures.extend(f"forbidden_substring:{word}" for word in rules.forbidden_substrings if normalize_text(word) in normalized)
+    task_success = float(not missing and not contradictions and format_score == 1.0)
     return EvaluationResult(
         example_id=example.example_id,
         intent_family=example.intent_family,
@@ -304,6 +327,9 @@ def evaluate_prediction(
         keyword_accuracy=keyword_score,
         format_accuracy=format_score,
         matched_keywords=found,
+        missing_concepts=missing,
+        matched_contradictions=contradictions,
+        format_failures=tuple(failures),
     )
 
 

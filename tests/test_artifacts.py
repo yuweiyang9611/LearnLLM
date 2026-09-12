@@ -43,7 +43,7 @@ class ArtifactLoaderTests(unittest.TestCase):
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.directory = Path(self.temporary_directory.name)
         torch.manual_seed(2026)
-        self.tokenizer = CharTokenizer.from_text("abcde")
+        self.tokenizer = CharTokenizer.from_text("abcde", add_eos=True)
         self.config = TinyGPTConfig(
             vocab_size=self.tokenizer.vocab_size,
             block_size=5,
@@ -102,7 +102,7 @@ class ArtifactLoaderTests(unittest.TestCase):
             self.adapter_logits, _ = self.adapted_model(self.input_ids)
 
         self.adapter_payload = {
-            "format_version": 1,
+            "format_version": 2,
             "adapter_state": lora_adapter_state_dict(self.adapted_model),
             "metadata": {
                 "config": asdict(self.config),
@@ -260,7 +260,7 @@ class ArtifactLoaderTests(unittest.TestCase):
             state[f"{TARGET}.lora_A"] = value.double()
 
         cases = {
-            "format": lambda payload: payload.__setitem__("format_version", 2),
+            "format": lambda payload: payload.__setitem__("format_version", 1),
             "base_sha": lambda payload: payload["metadata"].__setitem__(
                 "base_sha256", "0" * 64
             ),
@@ -321,7 +321,7 @@ class GenerateArtifactCliTests(unittest.TestCase):
 
     def test_default_checkpoint_and_explicit_adapter_modes(self) -> None:
         default_args = self.experiment.parse_args([])
-        self.assertEqual(default_args.checkpoint, self.experiment.CHECKPOINT_DIR / "tiny_gpt.pt")
+        self.assertIsNone(default_args.checkpoint)
         self.assertIsNone(default_args.adapter)
 
         adapter_args = self.experiment.parse_args(

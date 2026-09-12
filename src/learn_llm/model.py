@@ -244,6 +244,7 @@ class TinyGPT(nn.Module):
         top_k: int | None = None,
         do_sample: bool = True,
         generator: torch.Generator | None = None,
+        eos_token_id: int | None = None,
     ) -> Tensor:
         """Autoregressively append tokens using sampling or greedy decoding."""
 
@@ -254,9 +255,13 @@ class TinyGPT(nn.Module):
         if temperature < 0:
             raise ValueError("temperature cannot be negative")
 
+        if eos_token_id is not None and (type(eos_token_id) is not int or not 0 <= eos_token_id < self.config.vocab_size):
+            raise ValueError("eos_token_id must be a valid vocabulary ID")
+
         was_training = self.training
         self.eval()
         generated = input_ids
+        finished = torch.zeros(input_ids.shape[0], dtype=torch.bool, device=input_ids.device)
         try:
             for _ in range(max_new_tokens):
                 context = generated[:, -self.config.block_size :]
@@ -277,7 +282,12 @@ class TinyGPT(nn.Module):
                     next_token = torch.multinomial(
                         probabilities, num_samples=1, generator=generator
                     )
+                if eos_token_id is not None:
+                    next_token = torch.where(finished[:, None], eos_token_id, next_token)
+                    finished |= next_token[:, 0] == eos_token_id
                 generated = torch.cat((generated, next_token), dim=1)
+                if eos_token_id is not None and finished.all():
+                    break
         finally:
             self.train(was_training)
         return generated

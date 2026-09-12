@@ -42,28 +42,38 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1
 .\.venv\Scripts\python.exe .\experiments\05_transformer_block.py
 ```
 
-进入训练阶段后，实验存在明确的上游关系：先运行实验 06 生成真实预训练 checkpoint，并把其中的模型配置与字符 Tokenizer 作为后续阶段不可随意重建的基线；再运行实验 10，让 Full SFT 与 LoRA-SFT 从同一个 base 独立分叉，并加入 random-init SFT 作为额外基线。
+进入训练阶段后，先运行实验 06 生成版本 2 的 base checkpoint，再让实验 10 从同一个 base 独立比较 random-init SFT、Full SFT 与 LoRA-SFT。旧版本模型不会转换，请重新训练；原文件不会被删除。
 
 ```powershell
-# 先生成 checkpoints/tiny_gpt.pt
 .\.venv\Scripts\python.exe .\experiments\06_train_tiny_gpt.py --quick
-
-# 使用同一份 base config、权重和冻结 Tokenizer 比较四组结果；默认 3 个 seed
-.\.venv\Scripts\python.exe .\experiments\10_sft_tiny_gpt.py --quick
+$SftRun = ".\outputs\sft\demo-$(Get-Date -Format yyyyMMdd-HHmmssfff)"
+.\.venv\Scripts\python.exe .\experiments\10_sft_tiny_gpt.py --quick --output-dir $SftRun
+.\.venv\Scripts\python.exe .\experiments\07_generate.py `
+  --run-dir $SftRun --branch lora --seed 42 `
+  --instruction "为什么需要因果掩码？" --tokens 64
 ```
 
-实验 10 使用可机器读取的 4/4/4 切分：train 四条是 `seen`，dev 四条是相同意图族的 `paraphrase`，test 四条包含两条 `paraphrase` 和两条 `new_intent`。只用 dev 选择步数、学习率或 LoRA 配置；每个分支和 seed 的 test 在训练结束后才评一次。默认运行 seed 42/43/44，并对 assistant loss、严格任务成功率、关键词准确率、格式准确率和原语料验证 loss（保持度/干扰代理）报告均值与总体标准差，同时逐 seed 记录可训练/总参数量与耗时。`new_intent` 只是数据切分标签，不等于预训练时未知的知识，不能据此宣称未知知识泛化；Tiny 字符模型得到 0% 严格任务成功率也可能是诚实结果。
+预训练每次保存到 `outputs/pretrain/<run-id>/`，成功后更新 `latest.json`。实验 10 默认读取它，也可用 `--base-checkpoint` 指定 base。SFT 运行目录包含 base/语料副本、数据快照、每个 seed 的 `random/model.pt`、`full/model.pt`、`lora/adapter.pt`，以及 JSON/CSV 和 PNG/SVG 图表。所有模型路径均记录相对路径和 SHA-256；整个目录可以搬迁。非空输出目录拒绝复用；`--full-checkpoint`、`--adapter-output` 仅用于将首 seed 产物额外导出到尚不存在的文件。
 
-每次运行还会在唯一的 `outputs/sft/<时间>-seeds-.../` 目录写入 `sft_comparison.json` manifest 与长格式 `sft_comparison.csv` 训练历史。路径、seed、步数、三种学习率、数据文件、LoRA rank/alpha/dropout、生成长度、batch size、设备以及完整模型/adapter 输出都可通过 CLI 配置；用 `--help` 查看全部选项。实验 06/10 用数据 SHA-256 拒绝旧 checkpoint 与新语料混用。严格 artifact loader 会校验版本、config、冻结 Tokenizer、base/data SHA-256、LoRA targets 与 tensor 键/形状，再恢复模型。实验 08 仍是独立的小型 Linear 原理演示；真实 adapter 由实验 10 训练并保存。
+模型采用独立 EOS token，SFT 监督答案和 EOS，生成逐行停止；`--instruction` 自动添加训练时的用户/助手模板，原始文本续写使用互斥的 `--prompt`。新训练始终冻结 base 的词表和配置，不在微调时扩词表。
 
-实验 10 完成后，可以让实验 07 在新的进程中独立加载 base + adapter，而不是依赖内存中的训练模型：
+默认仍使用 4/4/4 的 train/dev/test 演示切分，运行 seed 42/43/44。扩展评测保留 4 条训练数据，另外使用 20 条 dev、40 条 test：
 
 ```powershell
-.\.venv\Scripts\python.exe .\experiments\07_generate.py `
-  --base-checkpoint .\checkpoints\tiny_gpt.pt `
-  --adapter .\checkpoints\tiny_gpt_lora_adapter.pt `
-  --prompt "为什么需要因果掩码？" --tokens 80
+.\.venv\Scripts\python.exe .\experiments\10_sft_tiny_gpt.py --quick --eval-suite extended --seed 42
 ```
+
+只根据 dev 调参，test 在训练完成后评测。报告保留关键词准确率与格式准确率；任务成功还要求所有概念组命中且未命中样本声明的矛盾规则。同义表达可通过，而“验证损失不能帮助发现过拟合。”会失败。规则仍不等于通用语义判断，`new_intent` 也不表示预训练未知知识；0% 成功率仍是有效实验结果。
+
+训练每步保存历史，结束、异常和中断都保留已完成记录。manifest 的 `status` 区分执行完成、失败和中断；`quality_status` 单独记录效果。默认效果不达标仍完成所有 seed；`--strict-checks` 在保存之后以退出码 2 报告效果不达标，执行错误返回 1，中断返回 130。JSON 拒绝 NaN/Infinity；强制结束进程或断电不保证完整保存。
+
+每次训练自动绘制 loss、可训练参数量与训练耗时，图表失败单独记为 `plot_error`。跨 seed 显示均值与总体标准差；不同运行分别标注配置与数据，不混合汇总。重新绘图无需加载模型：
+
+```powershell
+.\.venv\Scripts\python.exe .\scripts\plot_experiments.py $SftRun --output-dir .\outputs\plots\demo
+```
+
+实验 06 支持 `--corpus`、`--block-size`、`--n-layer`、`--n-head`、`--n-embd`、`--dropout`、`--batch-size`、`--learning-rate`、`--device` 和 `--output-dir`，用 `--help` 查看完整参数。短上下文可用于预训练消融；后续 SFT 装不下完整样本时会明确报错。
 
 ## 推荐阅读顺序
 
@@ -103,7 +113,7 @@ PDF 依赖固定在 `requirements-docs.txt`，不属于基础实验的必装项�
 
 ## 自动化验证
 
-GitHub Actions 在 Windows 上分别使用 Python 3.11 和 3.12 执行 `scripts/verify.ps1`，覆盖至少 46 项单测、venv 隔离、RAG、SFT、Agent 与结课示例；独立的 Ubuntu + Python 3.12 任务会构建 wheel、非 editable 安装该 wheel，并运行单测和实验 06→10 快速链路。Windows 的另一项任务会从讲义重建 PDF、运行结构和文本检查并上传产物。工作流定义见 [`.github/workflows/ci.yml`](.github/workflows/ci.yml)。
+GitHub Actions 在 Windows 上分别使用 Python 3.11 和 3.12 执行 `scripts/verify.ps1`，覆盖单元与端到端回归测试、venv 隔离、RAG、SFT、Agent 与结课示例；独立的 Ubuntu + Python 3.12 任务会构建 wheel、非 editable 安装该 wheel，并运行单测和实验 06→10 快速链路。Windows 的另一项任务会从讲义重建 PDF、运行结构和文本检查并上传产物。工作流定义见 [`.github/workflows/ci.yml`](.github/workflows/ci.yml)。
 
 ## 实验地图
 

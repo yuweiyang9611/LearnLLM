@@ -25,8 +25,8 @@ from .model import TinyGPT, TinyGPTConfig
 from .tokenizer import CharTokenizer
 
 
-TINY_GPT_CHECKPOINT_FORMAT_VERSION = 1
-LORA_ADAPTER_FORMAT_VERSION = 1
+TINY_GPT_CHECKPOINT_FORMAT_VERSION = 2
+LORA_ADAPTER_FORMAT_VERSION = 2
 
 _CONFIG_KEYS = {
     "vocab_size",
@@ -37,7 +37,7 @@ _CONFIG_KEYS = {
     "dropout",
     "bias",
 }
-_TOKENIZER_KEYS = {"characters", "add_unk"}
+_TOKENIZER_KEYS = {"characters", "add_unk", "add_eos"}
 _SHA256_PATTERN = re.compile(r"[0-9a-fA-F]{64}")
 
 
@@ -101,7 +101,8 @@ def _require_format_version(
     if type(version) is not int or version != expected:
         raise ArtifactValidationError(
             f"unsupported {artifact_name} format_version: {version!r}; "
-            f"expected {expected}"
+            f"expected {expected}. 重新训练: python experiments/06_train_tiny_gpt.py --quick; "
+            "python experiments/10_sft_tiny_gpt.py --quick"
         )
     return version
 
@@ -128,7 +129,7 @@ def _require_config(
         missing = sorted(_CONFIG_KEYS - supplied_keys)
         unexpected = sorted(supplied_keys - _CONFIG_KEYS)
         raise ArtifactValidationError(
-            f"{artifact_name} config keys do not match version 1; "
+            f"{artifact_name} config keys do not match version 2; "
             f"missing={missing}, unexpected={unexpected}"
         )
     for name in ("vocab_size", "block_size", "n_layer", "n_head", "n_embd"):
@@ -161,7 +162,7 @@ def _require_tokenizer(
         missing = sorted(_TOKENIZER_KEYS - supplied_keys)
         unexpected = sorted(supplied_keys - _TOKENIZER_KEYS)
         raise ArtifactValidationError(
-            f"{artifact_name} tokenizer keys do not match version 1; "
+            f"{artifact_name} tokenizer keys do not match version 2; "
             f"missing={missing}, unexpected={unexpected}"
         )
     characters = raw["characters"]
@@ -174,6 +175,8 @@ def _require_tokenizer(
         )
     if type(raw["add_unk"]) is not bool:
         raise ArtifactValidationError(f"{artifact_name} tokenizer.add_unk must be a boolean")
+    if raw["add_eos"] is not True:
+        raise ArtifactValidationError("version 2 requires tokenizer.add_eos=true; rerun experiments 06 then 10")
     try:
         tokenizer = CharTokenizer.from_state_dict(dict(raw))
     except ValueError as error:

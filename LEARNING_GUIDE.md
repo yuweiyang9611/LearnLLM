@@ -143,7 +143,7 @@ token ids [B,T]
 - 实验：`06_train_tiny_gpt.py`。
 - 先用 `--quick` 检查管线，再增加步数。
 - 验收：loss 比初始值明显下降；保存包含配置、权重和冻结 Tokenizer 的真实 base checkpoint；加载后输出一致。
-- 后续实验 07 和 10 都以 `checkpoints/tiny_gpt.pt` 为源，不得在微调阶段重建词表或位置嵌入。checkpoint 记录预训练语料、train/dev/test 指令文件及兼容数据视图的 SHA-256；修改数据、指令字符或窗口上限后，应回到实验 06 重新预训练。
+- 后续实验 07 和 10 默认通过 `outputs/pretrain/latest.json` 找到 base，不得在微调阶段重建词表或位置嵌入。版本 2 冻结词表并包含 EOS，预训练保存语料副本与指纹；SFT 独立记录指令数据和评测规则指纹。扩展评测无需重训；改变词表字符或窗口上限则需要重训。
 - 重要限制：在小语料上过拟合只证明训练管线工作，不证明模型理解世界。
 
 ### 阶段 7：自回归生成与评测
@@ -155,7 +155,7 @@ token ids [B,T]
 - Top-k：只在概率最高的 k 个候选中采样。
 - 实验：`07_generate.py`。
 - 验收：固定随机种子可复现；能解释采样策略没有增加模型知识。
-- 实验 10 生成 adapter 后，实验 07 也可用 `--base-checkpoint checkpoints/tiny_gpt.pt --adapter checkpoints/tiny_gpt_lora_adapter.pt` 在独立进程中严格恢复 LoRA 模型；loader 会先校验 artifact 版本、config、Tokenizer、SHA-256、targets 和 tensor 结构。
+- 实验 10 生成 adapter 后，实验 07 也可用 `--run-dir <SFT运行目录> --branch lora --instruction "为什么需要因果掩码？"` 在独立进程中严格恢复 LoRA 模型；loader 会先校验 artifact 版本、config、Tokenizer、SHA-256、targets 和 tensor 结构。
 
 ### 阶段 8：SFT、LoRA 和对齐
 
@@ -176,7 +176,7 @@ W = W_0 + \Delta W = W_0 + BA
 - 验收 SFT：prompt 与 padding label 都是 `-100`；训练 loss 下降；Full SFT 参数确实改变并保存完整模型权重 checkpoint（不含续训所需的 optimizer 状态）。
 - 验收 LoRA：基础权重逐元素不变；只有 A/B 可训练；注入前后输出一致；adapter-only 保存与恢复一致。
 - 比较时同时记录 train/dev/test assistant loss、任务成功率、关键词准确率、格式准确率、原预训练语料 validation loss 的保持度/干扰代理、可训练/总参数量、耗时与生成案例。默认 seed 42/43/44；loss 与任务指标跨 seed 报告均值和总体标准差，参数量和耗时按 seed 保留。JSON manifest 保存逐样本、逐类别和运行环境，CSV 保存长格式训练历史。
-- 严格任务成功要求一条生成同时命中全部必要关键词并满足全部格式规则。这个 Tiny 字符模型得到 0% 严格成功率也可能是正确、应保留的失败结果；`new_intent` 不代表知识在预训练语料中从未出现，不能宣称未知知识泛化。
+- 严格任务成功要求一条生成命中全部概念组、未命中声明的矛盾规则并满足全部格式规则。这个 Tiny 字符模型得到 0% 严格成功率也可能是正确、应保留的失败结果；`new_intent` 不代表知识在预训练语料中从未出现，不能宣称未知知识泛化。
 
 ### 阶段 9：RAG、Agent 和系统评测
 
@@ -250,3 +250,12 @@ W = W_0 + \Delta W = W_0 + BA
 - 怎样用测试证明 Agent 遇到未知工具、工具异常或无限规划时一定会停？
 
 如果某一题只能背定义，就回到相应实验，构造一个最小反例。
+
+## 版本 2 实验规范
+
+- 旧模型统一重训，执行实验 06→10；不转换、不删除旧 checkpoint。
+- 每次实验使用独立运行目录，SFT 保存 base 副本及每个 seed 的 random/full/lora 产物。可整体搬迁，按 manifest 的相对路径和哈希恢复。
+- EOS 参与 SFT 监督，生成到 EOS 停止；指令推理使用 `--instruction`，文本续写使用 `--prompt`。
+- 失败与效果不达标分开记录。默认保留所有 seed；严格验收 `--strict-checks` 保存后返回 2，执行错误返回 1，中断返回 130。
+- 演示数据仍为 4/4/4；扩展评测 `--eval-suite extended` 使用 4/20/40。概念同义组和矛盾规则增加可解释性，不代表通用语义正确率。
+- 自动输出 PNG/SVG；`scripts/plot_experiments.py` 可从历史 JSON/CSV 重新绘图。不同配置与数据分开标注，不混合汇总。结课项目提供两种配置的可复制命令。

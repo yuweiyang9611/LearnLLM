@@ -442,7 +442,9 @@ def source_digest() -> str:
         relative_path = path.relative_to(PROJECT_ROOT).as_posix().encode("utf-8")
         digest.update(relative_path)
         digest.update(b"\0")
-        digest.update(path.read_bytes())
+        # Markdown is read with universal newlines when rendered, and Git stores
+        # these UTF-8 text inputs as LF. Hash the same content on Windows and CI.
+        digest.update(path.read_text(encoding="utf-8").encode("utf-8"))
         digest.update(b"\0")
     return digest.hexdigest()
 

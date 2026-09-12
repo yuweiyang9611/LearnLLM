@@ -8,6 +8,7 @@ assistant token should contribute to the loss.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -40,7 +41,8 @@ class SFTSequence:
 
     ``prompt_token_count`` and ``response_token_count`` are token counts, not
     source-text character counts.  For the teaching ``CharTokenizer`` they are
-    often numerically equal, but the implementation deliberately derives them
+    often numerically equal before adding EOS; response_token_count includes
+    the EOS target when enabled. The implementation deliberately derives them
     from ``encode`` so the masking rule transfers to subword tokenizers.
     """
 
@@ -91,7 +93,8 @@ def build_sft_sequence(
 ) -> SFTSequence:
     """Encode one pair and build assistant-only next-token labels.
 
-    If the complete token sequence is ``prompt + response``, TinyGPT receives
+    With EOS enabled the response includes a final EOS target. For the complete
+    token sequence ``prompt + response``, TinyGPT receives
     all tokens except the last as inputs and all tokens except the first as
     next-token targets.  Targets before the first response token are replaced
     by ``IGNORE_INDEX``.  No silent truncation is performed because cutting an
@@ -108,6 +111,8 @@ def build_sft_sequence(
     if not isinstance(prompt_ids, list) or not isinstance(response_ids, list):
         raise TypeError("tokenizer.encode must return token ID lists")
 
+    if tokenizer.eos_id is not None:
+        response_ids.append(tokenizer.eos_id)
     full_ids = prompt_ids + response_ids
     input_ids = full_ids[:-1]
     # labels[i] is the token predicted from input_ids[i].  The first answer
@@ -204,6 +209,7 @@ def train_sft_steps(
     learning_rate: float = 3e-3,
     optimizer: torch.optim.Optimizer | None = None,
     max_grad_norm: float | None = 1.0,
+    on_step: Callable[[int, float], None] | None = None,
 ) -> list[float]:
     """Fine-tune model parameters on one small padded instruction batch."""
 
@@ -222,14 +228,18 @@ def train_sft_steps(
 
     model.train()
     losses: list[float] = []
-    for _ in range(steps):
+    for step in range(steps):
         optimizer.zero_grad(set_to_none=True)
         _, loss = model(batch.input_ids, batch.labels)
         if loss is None:
             raise RuntimeError("the language model did not return a training loss")
+        if not torch.isfinite(loss):
+            raise RuntimeError("training loss is not finite")
         loss.backward()
         if max_grad_norm is not None:
-            nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+            nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm, error_if_nonfinite=True)
         optimizer.step()
         losses.append(float(loss.detach().item()))
+        if on_step is not None:
+            on_step(step + 1, losses[-1])
     return losses
