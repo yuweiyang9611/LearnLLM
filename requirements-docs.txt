@@ -1,4 +1,4 @@
 --index-url https://pypi.org/simple
 
 reportlab==5.0.1
-pypdf==6.16.2
+pypdf==6.18.0
