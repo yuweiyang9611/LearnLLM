@@ -1,0 +1,346 @@
+/* Shared notebook language for every site under yuweiyang9611.github.io. */
+
+/* Noto Sans SC draws the middle dot full width, which opens wide gaps in labels such as "a · b". */
+@font-face {
+  font-family: "NB Dot";
+  font-weight: 100 900;
+  src: local("Segoe UI"), local("Helvetica Neue"), local("Roboto"), local("Arial");
+  unicode-range: U+00B7;
+}
+
+@view-transition { navigation: auto; }
+
+:root {
+  --nb-paper: #f4efe4;
+  --nb-sheet: #e7e0d0;
+  --nb-ink: #25211b;
+  --nb-ink-soft: #4a4338;
+  --nb-rule: #bdb39e;
+  --nb-rule-strong: #6a6152;
+  --nb-select: #d9d0ba;
+  /* Five colours, each with one job. Orange and yellow are left out on purpose: at 7:1 they turn brown,
+     the same family as the warm paper, and stop standing out.
+     All pass 7:1 on paper, on sheet and on every wash, in both schemes.
+     tests/home.mjs enforces this, so check a new value there before keeping it. */
+  --nb-red: #90031e;
+  --nb-red-wash: #ffdddb;
+  --nb-green: #01521d;
+  --nb-green-wash: #d5eed8;
+  --nb-cyan: #034d58;
+  --nb-cyan-wash: #c9eef6;
+  --nb-blue: #103f9c;
+  --nb-blue-wash: #dae7fe;
+  --nb-purple: #66278a;
+  --nb-wrong: var(--nb-red);
+  --nb-wrong-wash: var(--nb-red-wash);
+  --nb-stopped: var(--nb-blue);
+  --nb-stopped-wash: var(--nb-blue-wash);
+  --nb-done: var(--nb-green);
+  --nb-done-wash: var(--nb-green-wash);
+  --nb-run: var(--nb-cyan);
+  --nb-run-wash: var(--nb-cyan-wash);
+  --nb-link: var(--nb-blue);
+  --nb-code: var(--nb-purple);
+  --nb-rule-bold: var(--nb-ink);
+  --nb-fill: var(--nb-blue);
+  --nb-on-fill: var(--nb-paper);
+  --nb-sans: "NB Dot", "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  --nb-mono: "Cascadia Mono", Consolas, "SFMono-Regular", Menlo, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", monospace;
+  --nb-head-height: 3.25rem;
+  --nb-gutter: clamp(1rem, 4vw, 3rem);
+  --nb-page: 72rem;
+  --nb-measure: 42rem;
+  --nb-inset: max(var(--nb-gutter), calc((100% - var(--nb-page)) / 2 + var(--nb-gutter)));
+  color-scheme: light;
+}
+
+@media screen {
+:root[data-theme="dark"] {
+  --nb-paper: #1c1a17;
+  --nb-sheet: #2c2924;
+  --nb-ink: #e2dac9;
+  --nb-ink-soft: #c4baa7;
+  --nb-rule: #4c473e;
+  --nb-rule-strong: #958c7b;
+  --nb-select: #4a4437;
+  --nb-red: #ffa19d;
+  --nb-red-wash: #3d2322;
+  --nb-green: #88ca91;
+  --nb-green-wash: #1d3120;
+  --nb-cyan: #67c8db;
+  --nb-cyan-wash: #0f3137;
+  --nb-blue: #9abcf9;
+  --nb-blue-wash: #202b3f;
+  --nb-purple: #d1adec;
+  --nb-rule-bold: #958c7b;
+  --nb-fill: #1e4e95;
+  --nb-on-fill: #f4efe4;
+  color-scheme: dark;
+}
+}
+
+/* A site's own groups, such as topics or categories, borrow one colour for a word or a number. */
+[data-hue="red"] { --nb-hue: var(--nb-red); }
+[data-hue="green"] { --nb-hue: var(--nb-green); }
+[data-hue="cyan"] { --nb-hue: var(--nb-cyan); }
+[data-hue="blue"] { --nb-hue: var(--nb-blue); }
+[data-hue="purple"] { --nb-hue: var(--nb-purple); }
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: calc(var(--nb-head-height) + .75rem);
+  scrollbar-color: var(--nb-rule-strong) transparent;
+}
+
+body {
+  margin: 0;
+  background: var(--nb-paper);
+  color: var(--nb-ink);
+  font: 400 1rem/1.75 var(--nb-sans);
+  overflow-wrap: break-word;
+  line-break: strict;
+  text-spacing-trim: trim-start;
+  text-autospace: normal;
+}
+
+h1, h2, h3, h4 { margin: 0; color: inherit; text-wrap: pretty; word-break: keep-all; overflow-wrap: anywhere; }
+h1, h2 { font-weight: 600; line-height: 1.35; }
+h1 { font-size: clamp(1.625rem, 1.4rem + 1vw, 2rem); }
+h2 { font-size: 1.375rem; }
+h3 { font-size: 1rem; font-weight: 600; line-height: 1.5; }
+b, strong { font-weight: 600; }
+p { margin: 0; text-wrap: pretty; }
+ul, ol { margin: 0; padding: 0; }
+/* theme.js wraps the first of two touching marks that Chromium leaves a full em apart, as in ”， and ，“. */
+.nb-halt { font-feature-settings: "halt"; }
+
+a {
+  color: var(--nb-link);
+  text-decoration: underline;
+  text-decoration-color: var(--nb-rule-strong);
+  text-decoration-thickness: 1px;
+  text-underline-offset: .22em;
+}
+a:hover { text-decoration-color: currentColor; }
+
+::selection { background: var(--nb-select); color: var(--nb-ink); }
+:focus-visible { outline: 2px solid var(--nb-link); outline-offset: 2px; }
+
+code, kbd, pre, samp { font-family: var(--nb-mono); font-size: .875em; font-variant-ligatures: none; }
+kbd { padding: 0 .35em; border: 1px solid var(--nb-rule-strong); border-radius: 2px; }
+
+.skip-link {
+  position: fixed;
+  top: -5rem;
+  left: 1rem;
+  z-index: 100;
+  padding: .5rem .875rem;
+  background: var(--nb-ink);
+  color: var(--nb-paper);
+}
+.skip-link:focus { top: .5rem; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.nb-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: .375rem .875rem;
+  border: 1px solid var(--nb-rule-strong);
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: .9375rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+.nb-button:hover { border-color: var(--nb-link); color: var(--nb-link); }
+.nb-button[disabled] { color: var(--nb-ink-soft); border-style: dashed; cursor: not-allowed; }
+.nb-button--solid, .nb-button--solid:hover { border-color: var(--nb-link); background: var(--nb-fill); color: var(--nb-on-fill); }
+
+.nb-input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: .375rem .625rem;
+  border: 1px solid var(--nb-rule-strong);
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  caret-color: var(--nb-link);
+}
+.nb-input::placeholder { color: var(--nb-ink-soft); opacity: 1; }
+
+/* Running head: one line naming the book, always in reach. */
+.nb-head {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 1.5rem;
+  min-height: var(--nb-head-height);
+  padding: 0 var(--nb-inset);
+  border-bottom: 1px solid var(--nb-rule-bold);
+  background: var(--nb-paper);
+  view-transition-name: nb-head;
+}
+.nb-brand {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--nb-head-height);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: inherit;
+  text-decoration: none;
+}
+.nb-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 0 1.125rem; margin-left: auto; font-size: .9375rem; }
+.nb-nav a, .nb-theme button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  color: var(--nb-ink-soft);
+  text-decoration: none;
+}
+.nb-nav a:hover, .nb-theme button:hover { color: var(--nb-link); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .32em; }
+.nb-nav a[aria-current], .nb-theme button[aria-pressed="true"] {
+  color: var(--nb-link);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: .32em;
+}
+/* Day and night sit together, set off from the links by a hairline. */
+.nb-theme { display: inline-flex; gap: .625rem; padding-left: 1.125rem; border-left: 1px solid var(--nb-rule); font-size: .9375rem; }
+.nb-theme button { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
+.nb-nav-toggle {
+  display: none;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: .9375rem;
+  cursor: pointer;
+}
+
+@media (max-width: 56rem) {
+  .nb-head > .nb-theme { order: 1; margin-left: auto; padding-left: 0; border-left: 0; }
+  .js .nb-nav-toggle { order: 2; display: inline-flex; align-items: center; justify-content: flex-end; }
+  .nb-nav { order: 3; width: 100%; margin-left: 0; }
+  .js .nb-nav--collapsible { display: none; width: 100%; padding-bottom: .5rem; }
+  .js .nb-nav--collapsible.open { display: flex; }
+  .nb-nav--collapsible a { flex: 1 1 40%; }
+}
+
+/* Record line: the gutter shows what has been done. Solid is done, dashed is not done yet.
+   --nb-fraction is how far the solid part reaches, and the stopped tick sits at that point. */
+.nb-entry { position: relative; padding-left: 1.25rem; --nb-fraction: 0; }
+.nb-entry[data-record="done"] { --nb-fraction: 1; }
+.nb-entry::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: -1px;
+  left: 0;
+  width: 2px;
+  border-left: 1px dashed var(--nb-rule-strong);
+  background: linear-gradient(var(--nb-done), var(--nb-done)) -1px 0 / 2px calc(var(--nb-fraction) * 100%) no-repeat;
+  transition: background-size .5s cubic-bezier(.16, 1, .3, 1);
+}
+.nb-entry[aria-current]::after {
+  content: "";
+  position: absolute;
+  top: max(.5rem, calc(var(--nb-fraction) * 100%));
+  left: -.25rem;
+  width: .625rem;
+  height: 2px;
+  background: var(--nb-stopped);
+}
+/* The stopped row is the one row with a fill, so the eye finds it in a long register. */
+.nb-entry[aria-current] { background: var(--nb-stopped-wash); }
+
+.nb-stopped { color: var(--nb-stopped); font-size: .875rem; font-weight: 600; line-height: 1.5; }
+
+/* The record itself: a square box, ticked in green. */
+input[type="checkbox"] {
+  appearance: none;
+  flex: none;
+  display: inline-grid;
+  place-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  border: 1px solid var(--nb-ink);
+  border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="checkbox"]::before {
+  content: "";
+  width: .9rem;
+  height: .9rem;
+  background: var(--nb-done);
+  clip-path: polygon(14% 52%, 0 66%, 38% 100%, 100% 18%, 84% 6%, 36% 72%);
+  transform: scale(0);
+  transition: transform .18s cubic-bezier(.16, 1, .3, 1);
+}
+input[type="checkbox"]:checked::before { transform: scale(1); }
+input[type="checkbox"]:disabled { border: 1px dashed var(--nb-rule-strong); cursor: not-allowed; }
+
+/* Pasted output: a printout stuck into the page, not a fake window. */
+.nb-paste {
+  margin: 0;
+  padding: .75rem 1rem;
+  border-block: 1px solid var(--nb-rule-strong);
+  background: var(--nb-sheet);
+  font-family: var(--nb-mono);
+  font-size: .875rem;
+  line-height: 1.65;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* Code colours. code-colors.js or an engine's highlighter sets the classes. Print stays black. */
+@media screen {
+  .tok-comment { color: var(--nb-ink-soft); }
+  .tok-keyword { color: var(--nb-purple); }
+  .tok-type { color: var(--nb-cyan); }
+  .tok-call { color: var(--nb-blue); }
+  .tok-string { color: var(--nb-green); }
+  .tok-number { color: var(--nb-purple); }
+  .tok-meta { color: var(--nb-ink-soft); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition-duration: .01ms !important; }
+}
+
+@media (forced-colors: active) {
+  .nb-entry::before { border-left-color: CanvasText; }
+  .nb-entry[aria-current]::after { background: Highlight; }
+  input[type="checkbox"] { appearance: auto; }
+  input[type="checkbox"]::before { display: none; }
+}
+
+@media print {
+  .nb-head { position: static; }
+  .nb-nav, .nb-nav-toggle, .nb-theme { display: none; }
+}

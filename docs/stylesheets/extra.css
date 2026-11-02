@@ -1,281 +1,860 @@
-:root {
-  --llm-ink: #0b1220;
-  --llm-paper: #fbfaf6;
-  --llm-cyan: #38d9d0;
-  --llm-teal: #087f77;
-  --llm-violet: #7c6cf2;
-  --llm-amber: #f3b85b;
+/* LearnLLM on the notebook kit. notebook.css loads first and is a shared, unedited copy;
+   everything here adapts MkDocs Material to it. */
+
+/* Material enlarges the root to 125–150%, but the kit's sizes are rem against 16px. */
+html { font-size: 100%; }
+
+body {
+  --md-text-font-family: var(--nb-sans);
+  --md-code-font-family: var(--nb-mono);
 }
 
-[data-md-color-scheme="default"] {
-  --md-primary-fg-color: #101827;
-  --md-primary-fg-color--light: #1f2a3d;
-  --md-primary-fg-color--dark: #080d16;
-  --md-accent-fg-color: #087f77;
-  --md-default-bg-color: var(--llm-paper);
-  --md-typeset-a-color: #086f69;
-}
-
+/* Material's colours, taken from the kit's tokens. The tokens switch on data-theme, and the head keeps
+   data-md-color-scheme in step, so both schemes map the same way. */
+[data-md-color-scheme="default"],
 [data-md-color-scheme="slate"] {
-  --md-primary-fg-color: #111827;
-  --md-accent-fg-color: #54ddd5;
-  --md-typeset-a-color: #73e2dc;
-  --md-default-bg-color: #0d1422;
-  --md-default-fg-color: #e7edf7;
+  --md-default-fg-color: var(--nb-ink);
+  --md-default-fg-color--light: var(--nb-ink-soft);
+  --md-default-fg-color--lighter: var(--nb-rule-strong);
+  --md-default-fg-color--lightest: var(--nb-rule);
+  --md-default-bg-color: var(--nb-paper);
+  --md-default-bg-color--light: var(--nb-paper);
+  --md-default-bg-color--lighter: var(--nb-paper);
+  --md-default-bg-color--lightest: var(--nb-paper);
+  --md-primary-fg-color: var(--nb-paper);
+  --md-primary-fg-color--light: var(--nb-paper);
+  --md-primary-fg-color--dark: var(--nb-paper);
+  --md-primary-bg-color: var(--nb-ink);
+  --md-primary-bg-color--light: var(--nb-ink-soft);
+  --md-accent-fg-color: var(--nb-link);
+  --md-accent-fg-color--transparent: var(--nb-blue-wash);
+  --md-accent-bg-color: var(--nb-paper);
+  --md-accent-bg-color--light: var(--nb-paper);
+  --md-code-fg-color: var(--nb-ink);
+  --md-code-bg-color: var(--nb-sheet);
+  --md-code-bg-color--light: var(--nb-sheet);
+  --md-code-bg-color--lighter: var(--nb-sheet);
+  --md-code-hl-color: var(--nb-link);
+  --md-code-hl-color--light: var(--nb-blue-wash);
+  /* The kit's code colours: keyword and number purple, type cyan, call blue, string green,
+     comment and meta Soft Ink. Red is not used in code. */
+  --md-code-hl-number-color: var(--nb-purple);
+  --md-code-hl-special-color: var(--nb-green);
+  --md-code-hl-function-color: var(--nb-blue);
+  --md-code-hl-constant-color: var(--nb-cyan);
+  --md-code-hl-keyword-color: var(--nb-purple);
+  --md-code-hl-string-color: var(--nb-green);
+  --md-code-hl-name-color: var(--nb-ink);
+  --md-code-hl-operator-color: var(--nb-ink);
+  --md-code-hl-punctuation-color: var(--nb-ink);
+  --md-code-hl-comment-color: var(--nb-ink-soft);
+  --md-code-hl-generic-color: var(--nb-ink-soft);
+  --md-code-hl-variable-color: var(--nb-ink);
+  --md-typeset-color: var(--nb-ink);
+  --md-typeset-a-color: var(--nb-link);
+  --md-typeset-mark-color: var(--nb-blue-wash);
+  --md-typeset-del-color: var(--nb-red-wash);
+  --md-typeset-ins-color: var(--nb-green-wash);
+  --md-typeset-kbd-color: transparent;
+  --md-typeset-kbd-accent-color: transparent;
+  --md-typeset-kbd-border-color: var(--nb-rule-strong);
+  --md-typeset-table-color: var(--nb-rule);
+  --md-typeset-table-color--light: transparent;
+  --md-admonition-fg-color: var(--nb-ink);
+  --md-admonition-bg-color: var(--nb-paper);
+  --md-warning-fg-color: var(--nb-ink);
+  --md-warning-bg-color: var(--nb-red-wash);
+  --md-footer-fg-color: var(--nb-ink);
+  --md-footer-fg-color--light: var(--nb-ink-soft);
+  --md-footer-fg-color--lighter: var(--nb-ink-soft);
+  --md-footer-bg-color: var(--nb-paper);
+  --md-footer-bg-color--dark: var(--nb-paper);
+  --md-shadow-z1: none;
+  --md-shadow-z2: none;
+  --md-shadow-z3: none;
 }
 
-html {
-  scroll-behavior: smooth;
+/* The kit restyles every checkbox; Material's own toggles must stay hidden. */
+input.md-toggle,
+input.md-option { display: none; }
+
+/* ---------------------------------------------------------------- Page frame */
+
+.md-container { min-height: 0; }
+.md-grid { max-width: var(--nb-page); }
+/* Space above the page is a margin, not padding: Material's contents follow a section once it passes the head
+   plus 80% of this margin, and the kit's anchors land .75rem below the head, inside that allowance. */
+.md-main__inner { margin-top: 1.75rem; padding: 0 var(--nb-gutter) 2.5rem; }
+.md-content__inner { margin: 0; padding-top: 0; }
+.md-content__inner::before { display: none; }
+/* Reading pages keep prose to the measure. The opening screen hides the course contents and uses the page. */
+.md-sidebar--primary:not([hidden]) ~ .md-content > .md-content__inner { max-width: var(--nb-measure); }
+
+.md-skip { z-index: 100; padding: .5rem .875rem; border-radius: 0; font-size: .9375rem; text-decoration: none; }
+.md-skip:focus { z-index: 100; }
+
+/* The running head is the kit's .nb-head. Material's search and the course contents open from words in it. */
+.nb-head.md-header--shadow { box-shadow: none; }
+.nb-nav label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  color: var(--nb-ink-soft);
+  cursor: pointer;
+}
+.nb-nav label:hover {
+  color: var(--nb-link);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: .32em;
+}
+@media screen and (min-width: 76.25em) {
+  .nb-nav-drawer { display: none !important; }
+}
+/* In the opened menu the two words that open panels take the same two columns as the links. */
+@media (max-width: 56rem) {
+  .nb-nav--collapsible label { flex: 1 1 40%; }
 }
 
-body,
-input {
-  font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+/* ---------------------------------------------------------------- Course contents */
+
+/* Material sets most of its offsets under [dir=ltr], so the overrides here repeat it. */
+.md-sidebar { padding: 0 0 1.75rem; }
+.md-sidebar__scrollwrap { margin: 0; scrollbar-width: thin; }
+[dir="ltr"] .md-sidebar__inner { padding-right: .75rem; }
+[dir="ltr"] .md-nav--primary .md-nav__list,
+[dir="ltr"] .md-nav--secondary .md-nav__list { padding-left: 0; }
+[dir="ltr"] .md-nav--primary .md-nav__item > .md-nav__link,
+[dir="ltr"] .md-nav--secondary .md-nav__item > .md-nav__link { margin-right: 0; }
+[dir="ltr"] .md-nav__item--section > .md-nav { margin-left: 0; }
+[dir="ltr"] .md-nav--integrated > .md-nav__list > .md-nav__item--active .md-nav--secondary { border-left: 0; }
+.md-nav { font-size: .9375rem; line-height: 1.5; }
+.md-nav__title { padding: 0; color: var(--nb-ink); font-size: 1rem; font-weight: 600; }
+.md-nav__list { padding: 0; }
+.md-nav__item { padding: 0; }
+.md-nav__link {
+  display: block;
+  margin: 0;
+  padding: .3125rem 0;
+  color: var(--nb-ink-soft);
+  text-decoration: none;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.md-nav__link .md-ellipsis { overflow: visible; white-space: normal; text-overflow: clip; }
+.md-nav__link[href]:hover,
+.md-nav__link[href]:focus-visible { color: var(--nb-link); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .22em; }
+.md-nav__link .md-nav__icon { display: none; }
+.md-nav__item .md-nav__link--active,
+.md-nav--primary .md-nav__item--active > .md-nav__link { color: var(--nb-link); font-weight: 600; }
+.md-nav__link--passed { color: var(--nb-ink-soft); }
+/* A section is a group label, not a control, so it stays ink even around the page being read. */
+.md-nav__item--section { margin: 1rem 0 0; }
+.md-nav--primary .md-nav__item--section > .md-nav__link,
+.md-nav--primary .md-nav__item--section.md-nav__item--active > .md-nav__link {
+  margin: 0;
+  padding: .25rem 0;
+  color: var(--nb-ink);
+  font-size: .875rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+.md-nav__item--section > .md-nav { margin: 0; }
+.md-nav__item--section > .md-nav > .md-nav__list { padding: 0; }
+/* This page's sections sit under its entry: a dashed line for each, solid blue for the one being read.
+   This marks position, not a record. */
+.md-nav--integrated > .md-nav__list > .md-nav__item--active .md-nav--secondary,
+.md-nav--primary .md-nav--secondary {
+  display: block;
+  margin: .125rem 0 .5rem;
+  border: 0;
+  opacity: 1;
+  visibility: visible;
+}
+.md-nav--secondary > .md-nav__title { display: none; }
+.md-nav--secondary .md-nav__list { padding: 0; }
+.md-nav--secondary .md-nav__link {
+  padding: .25rem 0 .25rem .75rem;
+  border-left: 1px dashed var(--nb-rule-strong);
+  font-size: .875rem;
+  font-weight: 400;
+}
+.md-nav--secondary .md-nav .md-nav__link { padding-left: 1.5rem; }
+.md-nav--secondary .md-nav .md-nav .md-nav__link { padding-left: 2.25rem; }
+.md-nav--secondary .md-nav__link--active {
+  border-left: 1px solid var(--nb-link);
+  color: var(--nb-link);
+  font-weight: 600;
+}
+.md-nav--secondary .md-nav { margin: 0; }
+
+@media screen and (min-width: 76.25em) {
+  .md-sidebar--primary { width: 17rem; }
+  [dir="ltr"] .md-sidebar--primary:not([hidden]) ~ .md-content > .md-content__inner { margin-left: 3rem; }
+  .md-sidebar--primary .md-nav__title { position: static; padding: 0 0 .375rem; border-bottom: 1px solid var(--nb-rule-bold); box-shadow: none; background: none; }
+  .md-nav--primary .md-nav__list { padding: 0; }
+  .md-nav--primary .md-nav__item > .md-nav__link { margin: 0; }
+  .md-nav { margin-bottom: 0; }
+  .md-nav__item--section > .md-nav { margin-left: 0; }
 }
 
-code,
-kbd,
-pre {
-  font-family: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+/* Below 76.25em the contents become a drawer. Its levels are laid out flat, so a chapter is one tap away. */
+@media screen and (max-width: 76.234375em) {
+  .md-overlay { z-index: 45; background-color: rgb(37 33 27 / 55%); }
+  :root[data-theme="dark"] .md-overlay { background-color: rgb(0 0 0 / 60%); }
+  .md-sidebar--primary,
+  [dir="ltr"] .md-sidebar--primary {
+    --llm-drawer: min(22rem, 86vw);
+    left: calc(-1 * var(--llm-drawer));
+    z-index: 50;
+    width: var(--llm-drawer);
+    padding: 0;
+    border-right: 1px solid var(--nb-ink);
+    background: var(--nb-paper);
+  }
+  [data-md-toggle="drawer"]:checked ~ .md-container .md-sidebar--primary { box-shadow: none; transform: translateX(var(--llm-drawer)); }
+  .md-nav--primary,
+  .md-nav--primary .md-nav { background: var(--nb-paper); }
+  .md-nav--primary .md-nav__title[for="__drawer"] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: auto;
+    min-height: var(--nb-head-height);
+    padding: 0 var(--nb-gutter);
+    border-bottom: 1px solid var(--nb-rule-bold);
+    background: var(--nb-paper);
+    color: var(--nb-ink);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.5;
+    white-space: normal;
+  }
+  .md-nav--primary .md-nav__title[for="__drawer"]::after {
+    content: "关闭";
+    color: var(--nb-ink-soft);
+    font-size: .9375rem;
+    font-weight: 400;
+    text-decoration: underline;
+    text-decoration-color: var(--nb-rule-strong);
+    text-underline-offset: .22em;
+  }
+  .md-nav--primary > .md-nav__title ~ .md-nav__list { padding: .25rem var(--nb-gutter) 1.5rem; box-shadow: none; background: none; scroll-snap-type: none; }
+  .md-nav--primary .md-nav .md-nav__list { padding: 0; box-shadow: none; background: none; }
+  .md-nav--primary .md-nav__item { border-top: 0; }
+  .md-nav--primary .md-nav__item,
+  .md-nav--primary .md-nav__title { font-size: inherit; line-height: inherit; }
+  .md-nav--primary .md-nav__link { padding: .375rem 0; }
+  .md-nav--primary .md-nav__item--section > .md-nav__link { padding: .25rem 0; }
+  .md-nav--primary .md-nav .md-nav__title { display: none; }
+  .md-nav--primary .md-nav,
+  .md-nav__toggle ~ .md-nav {
+    position: static;
+    display: block;
+    height: auto;
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .md-nav--primary .md-nav__link[for="__toc"] { display: none; }
+  .md-nav--primary .md-nav__link[for="__toc"] + .md-nav__link { display: block; }
+  .md-nav--primary .md-nav__link[for="__toc"] ~ .md-nav { display: block; }
+  [dir="ltr"] .md-nav--primary .md-nav--secondary .md-nav__link { padding-left: .75rem; }
+  [dir="ltr"] .md-nav--primary .md-nav--secondary .md-nav .md-nav__link { padding-left: 1.5rem; }
+  [dir="ltr"] .md-nav--primary .md-nav--secondary .md-nav .md-nav .md-nav__link { padding-left: 2.25rem; }
 }
+
+/* ---------------------------------------------------------------- Generated prose */
 
 .md-typeset {
-  font-size: 0.82rem;
-  line-height: 1.78;
+  font-size: 1rem;
+  line-height: 1.75;
+  overflow-wrap: break-word;
 }
 
 .md-typeset h1,
 .md-typeset h2,
-.md-typeset h3 {
-  color: var(--md-default-fg-color--light);
-  font-weight: 720;
-  letter-spacing: -0.02em;
+.md-typeset h3,
+.md-typeset h4 {
+  color: var(--nb-ink);
+  font-weight: 600;
+  letter-spacing: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.md-typeset h1 { margin: 0 0 1.25rem; font-size: clamp(1.625rem, 1.4rem + 1vw, 2rem); line-height: 1.35; }
+.md-typeset h2 {
+  margin: 2.5rem 0 .75rem;
+  padding: 0 0 .375rem;
+  border-bottom: 1px solid var(--nb-rule-bold);
+  font-size: 1.375rem;
+  line-height: 1.4;
+}
+.md-typeset h3 { margin: 1.75rem 0 .5rem; font-size: 1.0625rem; line-height: 1.5; }
+.md-typeset h4 { margin: 1.25rem 0 .375rem; font-size: 1rem; line-height: 1.5; }
+.md-typeset :target { --md-scroll-margin: 0px; --md-scroll-offset: 0px; }
+.md-typeset .headerlink { margin-left: .5rem; color: var(--nb-ink-soft); text-decoration: none; }
+/* Without hover the mark never shows, and on a phone it can wrap onto a line of its own. */
+@media (hover: none) {
+  .md-typeset .headerlink { display: none; }
+}
+.md-typeset .headerlink:focus,
+.md-typeset .headerlink:hover,
+.md-typeset :target > .headerlink { color: var(--nb-link); }
+
+.md-typeset p { margin: 0 0 1em; }
+.md-typeset ul,
+.md-typeset ol { margin: 0 0 1em; padding-left: 1.5rem; }
+[dir="ltr"] .md-typeset ul,
+[dir="ltr"] .md-typeset ol,
+[dir="ltr"] .md-typeset ul li,
+[dir="ltr"] .md-typeset ol li,
+[dir="ltr"] .md-typeset li ul,
+[dir="ltr"] .md-typeset li ol { margin-left: 0; }
+.md-typeset li { margin-bottom: .25em; }
+.md-typeset li > p { margin: 0 0 .5em; }
+.md-typeset ul li ul,
+.md-typeset ol li ol,
+.md-typeset ul li ol,
+.md-typeset ol li ul { margin: .25em 0 .5em; }
+.md-typeset hr { margin: 2rem 0; border-bottom: 1px solid var(--nb-rule); }
+.md-typeset strong { font-weight: 600; }
+
+.md-typeset a { color: var(--nb-link); }
+.md-typeset a:hover,
+.md-typeset a:focus { color: var(--nb-link); text-decoration-color: currentColor; }
+.md-typeset a code { color: inherit; }
+
+.md-typeset blockquote,
+[dir="ltr"] .md-typeset blockquote {
+  margin: 1rem 0;
+  padding: 0 0 0 1rem;
+  border-left: 1px solid var(--nb-rule-strong);
+  color: inherit;
+}
+.md-typeset blockquote > :last-child { margin-bottom: 0; }
+
+.md-typeset mark { padding: 0 .1em; background: var(--nb-blue-wash); color: inherit; }
+.md-typeset kbd { padding: 0 .35em; border: 1px solid var(--nb-rule-strong); border-radius: 2px; background: none; box-shadow: none; color: inherit; }
+
+/* Inline code: purple on the sheet. */
+.md-typeset code {
+  padding: .08em .3em;
+  border-radius: 2px;
+  background: var(--nb-sheet);
+  color: var(--nb-code);
+  font-size: .875em;
+  font-variant-ligatures: none;
+  word-break: normal;
+  overflow-wrap: anywhere;
 }
 
-.llm-hero {
+/* Code blocks are pasted onto the sheet between hairlines, with no window around them.
+   Each block keeps a 4rem strip at its right edge for the 复制 word. The code scrolls inside its own box,
+   which ends where the strip begins, so the word never sits over the text. */
+.md-typeset pre {
   position: relative;
-  overflow: hidden;
-  margin: 0 0 2.5rem;
-  padding: clamp(2rem, 5vw, 4.8rem);
-  border: 1px solid rgba(56, 217, 208, 0.2);
-  border-radius: 1.1rem;
-  color: #f8fafc;
-  background:
-    radial-gradient(circle at 82% 18%, rgba(124, 108, 242, 0.34), transparent 29%),
-    radial-gradient(circle at 12% 88%, rgba(56, 217, 208, 0.2), transparent 30%),
-    linear-gradient(135deg, #09111f 0%, #111d32 58%, #17152f 100%);
-  box-shadow: 0 1.6rem 4rem rgba(6, 12, 24, 0.18);
+  margin: 1rem 0;
+  padding-right: 4rem;
+  border-block: 1px solid var(--nb-rule-strong);
+  background: var(--nb-sheet);
+  color: var(--nb-ink);
+  font-size: .875rem;
+  line-height: 1.65;
 }
-
-.llm-hero::after {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  content: "";
-  opacity: 0.16;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.16) 1px, transparent 1px);
-  background-size: 2.5rem 2.5rem;
-  mask-image: linear-gradient(110deg, black, transparent 75%);
-}
-
-.llm-hero > * {
-  position: relative;
-  z-index: 1;
-}
-
-.llm-hero h1 {
-  max-width: 18ch;
-  margin: 0.35rem 0 1rem;
-  color: #ffffff;
-  font-size: clamp(2rem, 5vw, 4rem);
-  line-height: 1.12;
-  letter-spacing: -0.045em;
-}
-
-.llm-hero > p:not(:last-child) {
-  max-width: 46rem;
-  color: #d7e1ee;
-  font-size: clamp(0.95rem, 1.5vw, 1.15rem);
-}
-
-.llm-eyebrow {
-  color: var(--llm-cyan);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.llm-hero .md-button {
-  margin: 0.4rem 0.4rem 0.4rem 0;
-  border-color: rgba(255, 255, 255, 0.42);
-  color: #ffffff;
-}
-
-.llm-hero .md-button:hover,
-.llm-hero .md-button:focus-visible {
-  border-color: var(--llm-cyan);
-  background: rgba(56, 217, 208, 0.12);
-}
-
-.llm-hero .md-button--primary {
-  border-color: var(--llm-cyan);
-  color: #07151d;
-  background: var(--llm-cyan);
-}
-
-.llm-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
-  max-width: 42rem;
-  margin-top: 2.2rem;
-}
-
-.llm-stats div {
-  display: flex;
-  min-width: 0;
-  padding-top: 0.85rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  flex-direction: column;
-}
-
-.llm-stats strong {
-  color: #ffffff;
-  font-size: 1.45rem;
-  line-height: 1.2;
-}
-
-.llm-stats span {
-  color: #aebfd2;
-  font-size: 0.68rem;
-}
-
-.llm-concepts > ul > li {
-  border: 1px solid color-mix(in srgb, var(--md-default-fg-color) 12%, transparent);
-  border-radius: 0.8rem;
-  background: color-mix(in srgb, var(--md-default-bg-color) 95%, var(--llm-cyan));
+.md-typeset pre > code {
+  padding: .75rem 0 .75rem 1rem;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font-size: 1em;
+  line-height: inherit;
+  white-space: pre;
+  overflow-wrap: normal;
+  scrollbar-width: thin;
   box-shadow: none;
 }
-
-.llm-concepts > ul > li::before {
-  display: block;
-  width: 2rem;
-  height: 0.2rem;
-  margin-bottom: 0.8rem;
-  border-radius: 999px;
-  content: "";
-  background: linear-gradient(90deg, var(--llm-teal), var(--llm-violet));
+.md-typeset pre > code:focus-visible { outline: 2px solid var(--nb-link); outline-offset: 2px; }
+.md-typeset .highlight { margin: 1rem 0; }
+.md-typeset .highlight pre { margin: 0; }
+.md-typeset .highlight .nc,
+.md-typeset .highlight .ne { color: var(--nb-cyan); }
+.md-typeset .highlight .nn { color: var(--nb-ink); }
+.md-typeset .highlight .hll { box-shadow: none; }
+@media print {
+  .md-typeset pre { padding-right: 0; }
 }
 
-.llm-path {
-  counter-reset: llm-step;
-}
+/* Commands sit on the cyan wash, one per line, and scroll sideways rather than break. */
+.md-typeset .language-powershell pre { border-block: 0; background: var(--nb-run-wash); color: var(--nb-run); }
+.md-typeset .language-powershell code span { color: inherit; }
+.md-typeset .language-powershell code :is(.c, .c1, .ch, .cm, .cs) { color: var(--nb-ink-soft); }
 
-.llm-path ol {
-  display: grid;
-  gap: 0.8rem;
+/* Material's copy button, as a word in the strip at the block's right edge. Its confirmation is Material's
+   own toast, 已复制到剪贴板. */
+.md-typeset .md-code__nav {
+  top: 0;
+  right: 0;
+  gap: 0;
   padding: 0;
-  list-style: none;
+  border-radius: 0;
+  background: none;
+  flex-direction: column;
+  align-items: flex-end;
 }
-
-.llm-path li {
-  position: relative;
-  padding: 1rem 1rem 1rem 3.4rem;
-  border-left: 2px solid color-mix(in srgb, var(--llm-teal) 45%, transparent);
-  border-radius: 0 0.65rem 0.65rem 0;
-  background: color-mix(in srgb, var(--md-code-bg-color) 66%, transparent);
-  counter-increment: llm-step;
+.md-typeset :hover > .md-code__nav { background: none; }
+.md-typeset .md-code__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 4rem;
+  height: auto;
+  min-height: 2.75rem;
+  padding: 0 0 0 1rem;
+  color: var(--nb-ink-soft);
+  font-family: var(--nb-sans);
+  font-size: .8125rem;
+  line-height: 1;
+  text-decoration: underline;
+  text-decoration-color: var(--nb-rule-strong);
+  text-underline-offset: .22em;
 }
+.md-typeset :hover > * > .md-code__button { color: var(--nb-ink-soft); }
+.md-typeset .md-code__button:hover,
+.md-typeset .md-code__button.focus-visible { color: var(--nb-ink); }
+.md-typeset .md-code__button::after { content: none; }
+.md-typeset .md-code__button[data-md-type="copy"]::before { content: "复制"; }
 
-.llm-path li::before {
-  position: absolute;
-  top: 0.82rem;
-  left: 0.85rem;
-  display: grid;
-  width: 1.65rem;
-  height: 1.65rem;
-  border-radius: 50%;
-  color: #ffffff;
-  content: counter(llm-step, decimal-leading-zero);
-  font-size: 0.58rem;
-  font-weight: 800;
-  background: var(--llm-teal);
-  place-items: center;
-}
-
-.llm-next {
-  display: inline-block;
-  margin-top: 0.6rem;
-  font-weight: 750;
-}
-
+/* Tables: ruled rows with a bold rule under the head, in a wrapper that scrolls sideways. */
+.md-typeset__scrollwrap { margin: 1rem 0; overflow-x: auto; overscroll-behavior-inline: contain; }
+.md-typeset__table { display: block; margin: 0; padding: 0; }
 .md-typeset table:not([class]) {
   display: table;
-  min-width: 42rem;
+  width: 100%;
+  min-width: 640px;
+  border: 0;
+  border-radius: 0;
+  border-collapse: collapse;
+  background: none;
+  font-size: .9375rem;
+  line-height: 1.65;
+}
+.md-typeset table:not([class]) th,
+.md-typeset table:not([class]) td {
+  padding: .5rem .75rem .5rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--nb-rule);
+  text-align: left;
+  vertical-align: top;
+}
+.md-typeset table:not([class]) th {
+  min-width: 4rem;
+  word-break: keep-all;
+  border-bottom-color: var(--nb-rule-bold);
+  background: none;
+  color: inherit;
+  font-weight: 600;
+}
+.md-typeset table:not([class]) tbody tr:hover { background: none; box-shadow: none; }
+
+/* Task lists: the kit's square box. These lists are read, not ticked, so the boxes stay dashed. */
+.md-typeset .task-list-item { position: relative; list-style: none; }
+[dir="ltr"] .md-typeset .task-list-item [type="checkbox"] { left: -1.5rem; }
+.md-typeset .task-list-item [type="checkbox"] { position: absolute; top: .25em; }
+.md-typeset .task-list-control [type="checkbox"] { z-index: auto; opacity: 1; }
+.md-typeset .task-list-indicator { display: none; }
+
+/* Formulas scroll sideways inside the measure instead of widening the page. */
+.md-typeset .arithmatex { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+.md-typeset div.arithmatex { margin: 1rem 0; }
+.md-typeset div.arithmatex > * { margin-left: 0 !important; padding: 0; }
+
+/* Admonitions keep their colour only where it has a job: a warning is red and a success is green, each as a
+   short band behind its written label. The other kinds are a plain label over plain text. */
+.md-typeset .admonition,
+.md-typeset details {
+  margin: 1.25rem 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: none;
+  color: inherit;
+  font-size: 1rem;
+}
+.md-typeset .admonition > *,
+.md-typeset details > * { margin-inline: 0; }
+.md-typeset .admonition-title,
+.md-typeset summary {
+  margin: 0 -.75rem .25rem;
+  padding: .375rem .75rem;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--nb-ink);
+  font-size: 1rem;
+  font-weight: 600;
+}
+.md-typeset .admonition-title::before,
+.md-typeset summary::before,
+.md-typeset summary::after { display: none; }
+.md-typeset details > summary { cursor: pointer; text-decoration: underline; text-decoration-color: var(--nb-rule-strong); text-underline-offset: .22em; }
+.md-typeset :is(.admonition, details):is(.warning, .caution, .attention, .danger, .error, .failure, .fail, .missing) > :is(.admonition-title, summary) {
+  background: var(--nb-wrong-wash);
+  color: var(--nb-wrong);
+}
+.md-typeset :is(.admonition, details):is(.success, .check, .done) > :is(.admonition-title, summary) {
+  background: var(--nb-done-wash);
+  color: var(--nb-done);
 }
 
-.md-typeset__table {
-  display: block;
-  max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: thin;
+/* ---------------------------------------------------------------- Previous, next and the foot */
+
+.nb-pager {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 2rem;
+  margin-top: 2.5rem;
+  border-top: 1px solid var(--nb-rule);
+}
+.md-typeset .nb-pager a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding-block: .5rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-decoration: none;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.md-typeset .nb-pager a:hover { text-decoration: underline; }
+.md-typeset .nb-pager span { color: var(--nb-ink-soft); font-weight: 400; }
+.nb-pager-next { margin-left: auto; }
+
+.nb-foot {
+  padding: 1rem var(--nb-inset) 1.5rem;
+  border-top: 1px solid var(--nb-rule);
+  color: var(--nb-ink-soft);
+  font-size: .875rem;
 }
 
-.arithmatex {
-  max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
+/* Material places this word under the head with an inline top; it sits at the bottom right instead, like a toast. */
+.md-top,
+[dir="ltr"] .md-top {
+  top: auto !important;
+  right: var(--nb-gutter);
+  bottom: 1rem;
+  left: auto;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  margin: 0;
+  padding: 0 .875rem;
+  border: 1px solid var(--nb-ink);
+  border-radius: 2px;
+  background: var(--nb-paper);
+  box-shadow: none;
+  color: var(--nb-ink);
+  font: inherit;
+  font-size: .9375rem;
+  transform: none;
+}
+.md-top[hidden] { transform: none; }
+.md-top:hover,
+.md-top:focus-visible { border-color: var(--nb-link); background: var(--nb-paper); color: var(--nb-link); }
+
+/* Material's toast, such as 已复制到剪贴板. */
+.md-dialog {
+  right: var(--nb-gutter);
+  bottom: 4.5rem;
+  z-index: 60;
+  min-width: 0;
+  padding: .5rem .875rem;
+  border: 1px solid var(--nb-ink);
+  border-radius: 2px;
+  background: var(--nb-paper);
+  box-shadow: none;
+}
+.md-dialog__inner { color: var(--nb-ink); font-size: .9375rem; }
+
+/* ---------------------------------------------------------------- Search */
+
+/* The search panel is a dialog under the running head: an ink outline on paper over a scrim, words for its actions. */
+.nb-head > .md-search { position: absolute; padding: 0; }
+.nb-head .md-search__overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: rgb(37 33 27 / 55%);
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+:root[data-theme="dark"] .nb-head .md-search__overlay { background: rgb(0 0 0 / 60%); }
+/* Closed, the panel draws nothing but stays focusable: Material's / key focuses the field, and that opens it. */
+.nb-head .md-search__inner {
+  display: flex;
+  position: fixed;
+  top: calc(var(--nb-head-height) + .5rem);
+  right: var(--nb-inset);
+  left: auto;
+  z-index: 41;
+  float: none;
+  flex-direction: column;
+  width: min(40rem, calc(100vw - 2 * var(--nb-gutter)));
+  height: auto;
+  max-height: calc(100dvh - var(--nb-head-height) - 1.5rem);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--nb-ink);
+  border-radius: 2px;
+  background: var(--nb-paper);
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+[data-md-toggle="search"]:not(:checked) ~ .nb-head .md-search__inner {
+  width: 0;
+  height: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+[data-md-toggle="search"]:checked ~ .nb-head .md-search__overlay { display: block; }
+.nb-head .md-search__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 .875rem;
+  height: auto;
+  padding: .75rem 1rem .5rem;
+  border-bottom: 1px solid var(--nb-rule-bold);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.nb-head .md-search__input {
+  flex: 1 1 16rem;
+  min-height: 2.5rem;
+  padding: .375rem .625rem;
+  border: 1px solid var(--nb-rule-strong);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--nb-ink);
+  font: inherit;
+  font-size: 1rem;
+  caret-color: var(--nb-link);
+  text-overflow: clip;
+}
+.nb-head .md-search__input::placeholder { color: var(--nb-ink-soft); opacity: 1; }
+.nb-head .md-search__input:focus-visible { outline: 2px solid var(--nb-link); outline-offset: 2px; }
+.nb-head .md-search__suggest {
+  top: .75rem;
+  left: 1rem;
+  right: 1rem;
+  width: auto;
+  height: 2.5rem;
+  padding: 0 .625rem;
+  border: 1px solid transparent;
+  color: var(--nb-ink-soft);
+  font-size: 1rem;
+  overflow: hidden;
+  opacity: 1;
+  pointer-events: none;
+}
+.nb-head .md-search__options {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  gap: 0 .875rem;
+  margin-left: auto;
+  pointer-events: auto;
+}
+.md-search__word {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--nb-ink-soft);
+  font: inherit;
+  font-size: .9375rem;
+  text-decoration: underline;
+  text-decoration-color: var(--nb-rule-strong);
+  text-underline-offset: .22em;
+  cursor: pointer;
+}
+.md-search__word:hover { color: var(--nb-ink); }
+.md-search__input:not(:valid) ~ .md-search__options > :is([type="reset"], [data-md-component="search-share"]) { display: none; }
+.nb-head .md-search__output {
+  position: static;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: auto;
+  overflow: hidden;
+  border-radius: 0;
+  box-shadow: none;
+  opacity: 1;
+}
+.nb-head .md-search__scrollwrap {
+  width: auto;
+  height: auto;
+  max-height: calc(100dvh - var(--nb-head-height) - 9rem);
+  overflow-y: auto;
+  background: none;
+  transform: none;
+}
+.md-search-result { color: var(--nb-ink); }
+.md-search-result__meta {
+  padding: .5rem 1rem;
+  background: none;
+  color: var(--nb-ink-soft);
+  font-size: .875rem;
+  line-height: 1.5;
+}
+[dir="ltr"] .md-search-result__meta,
+[dir="ltr"] .md-search-result__article,
+[dir="ltr"] .md-search-result__more > summary > div { padding-left: 1rem; }
+.md-search-result__list { border-top: 1px solid var(--nb-rule); }
+.md-search-result__item { border-bottom: 1px solid var(--nb-rule); box-shadow: none; }
+.md-search-result__link { color: inherit; text-decoration: none; }
+.md-search-result__link:hover,
+.md-search-result__link:focus { background: none; }
+.md-search-result__link:focus-visible { outline: 2px solid var(--nb-link); outline-offset: -2px; }
+.md-search-result__article { padding: .625rem 1rem; }
+.md-search-result__icon { display: none; }
+.md-search-result .md-typeset { font-size: .9375rem; line-height: 1.65; }
+.md-search-result .md-typeset h1,
+.md-search-result .md-typeset h2 {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--nb-link);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.md-search-result .md-typeset h1 { font-size: 1.0625rem; }
+.md-search-result__link:hover h1,
+.md-search-result__link:hover h2 { text-decoration: underline; text-underline-offset: .22em; }
+.md-search-result .md-typeset p { margin: .125rem 0 0; color: var(--nb-ink-soft); font-size: .875rem; }
+.md-search-result mark { padding: 0 .1em; background: var(--nb-blue-wash); color: inherit; text-decoration: none; }
+.md-search-result__more > summary > div { padding: .5rem 1rem; color: var(--nb-link); font-size: .875rem; }
+.md-search-result__more > summary:focus > div,
+.md-search-result__more > summary:hover > div { background: none; color: var(--nb-link); text-decoration: underline; }
+.md-search-result__more[open] > summary { background: var(--nb-paper); }
+.md-search-result__terms { color: var(--nb-ink-soft); font-size: .875rem; }
+
+/* ---------------------------------------------------------------- Opening screen */
+
+/* First screen: where to start, then the commands that set the lab up across the full width,
+   so each command shows whole on a desktop and only scrolls sideways on a phone. */
+.md-typeset .llm-desk {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+  padding-bottom: 1.75rem;
+  border-bottom: 1px solid var(--nb-rule);
+}
+.md-typeset .llm-start h1 { margin: 0; }
+.md-typeset .llm-start > p { margin: 0; }
+.md-typeset a.llm-continue {
+  display: inline-block;
+  margin-top: 1rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.45;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.md-typeset .llm-start > .llm-note { max-width: var(--nb-measure); margin-top: .75rem; }
+.md-typeset .llm-note { color: var(--nb-ink-soft); font-size: .9375rem; line-height: 1.65; }
+.md-typeset .llm-start > .llm-pdf { max-width: var(--nb-measure); margin-top: .5rem; font-size: .9375rem; line-height: 1.65; }
+.md-typeset .llm-run h2.llm-run-label {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--nb-run);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.md-typeset .llm-run .highlight { margin: 0; }
+.md-typeset .llm-run > .llm-note { max-width: var(--nb-measure); margin: .625rem 0 0; font-size: .875rem; }
+
+.md-typeset .llm-section { padding-block: 1.75rem; border-bottom: 1px solid var(--nb-rule); }
+.md-typeset .llm-section:last-child { border-bottom: 0; padding-bottom: 0; }
+.md-typeset .llm-section > h2 { margin: 0; padding: 0; border: 0; }
+.md-typeset .llm-section-note { margin: .125rem 0 0; color: var(--nb-ink-soft); font-size: .9375rem; }
+
+/* Registers: ruled rows, opened by a bold rule. Chapters carry the record line; with no record it stays dashed. */
+.md-typeset .llm-rows,
+.md-typeset .llm-notes {
+  margin: .75rem 0 0;
+  padding: 0;
+  border-top: 1px solid var(--nb-rule-bold);
+  list-style: none;
+}
+[dir="ltr"] .md-typeset .llm-rows > li,
+[dir="ltr"] .md-typeset .llm-notes > li { margin: 0; }
+.md-typeset .llm-row {
+  --row-key: 2.5rem;
+  --row-name: 15rem;
+  --row-state: 10rem;
+  display: grid;
+  grid-template-columns: var(--row-key) var(--row-name) minmax(0, 1fr) var(--row-state);
+  gap: .125rem 1.25rem;
+  align-items: baseline;
+  padding: .75rem 0 .75rem 1.25rem;
+  border-bottom: 1px solid var(--nb-rule);
+}
+.md-typeset .llm-row > * { margin: 0; }
+.md-typeset .llm-key { color: var(--nb-ink-soft); font-size: .875rem; }
+.md-typeset ol.llm-rows .llm-key { font-family: var(--nb-mono); }
+.md-typeset .llm-row h3.llm-title { margin: 0; font-size: 1.0625rem; line-height: 1.5; }
+.md-typeset .llm-title a { text-decoration: none; }
+.md-typeset .llm-title a:hover { text-decoration: underline; text-decoration-color: currentColor; }
+.md-typeset .llm-title .headerlink { display: none; }
+.md-typeset .llm-row .llm-note { line-height: 1.65; }
+.md-typeset .llm-state { color: var(--nb-ink-soft); font-size: .875rem; font-variant-numeric: tabular-nums; }
+
+/* Notes run the full width of the register, with their text kept to the measure. */
+.md-typeset .llm-notes > li {
+  padding: .75rem max(0px, calc(100% - var(--nb-measure) - 1.25rem)) .75rem 1.25rem;
+  border-bottom: 1px solid var(--nb-rule);
+  line-height: 1.75;
+}
+.md-typeset .llm-warn { color: var(--nb-wrong); }
+
+@media screen and (max-width: 62rem) {
+  .md-typeset .llm-row { grid-template-columns: var(--row-key) 13rem minmax(0, 1fr); }
+  .md-typeset .llm-row > .llm-state { grid-column: 3; }
+}
+@media screen and (max-width: 44rem) {
+  .md-typeset .llm-row { grid-template-columns: var(--row-key) minmax(0, 1fr); }
+  .md-typeset .llm-row > :not(.llm-key) { grid-column: 2; }
+  .md-typeset .llm-row > .llm-state:empty { display: none; }
 }
 
-.md-typeset pre > code {
-  scrollbar-width: thin;
-}
+/* 404 */
+.md-typeset .nb-404-links { padding: 0; list-style: none; }
+[dir="ltr"] .md-typeset .nb-404-links li { margin: 0; }
+.md-typeset .nb-404-links a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 
-:focus-visible {
-  outline: 3px solid var(--llm-teal);
-  outline-offset: 3px;
-}
-
-[data-md-color-scheme="slate"] :focus-visible,
-.md-header :focus-visible,
-.llm-hero :focus-visible {
-  outline-color: var(--llm-amber);
-}
-
-@media screen and (max-width: 44.9844em) {
-  .md-typeset {
-    font-size: 0.78rem;
-  }
-
-  .llm-hero {
-    margin-inline: -0.5rem;
-    padding: 1.7rem 1.2rem;
-    border-radius: 0.8rem;
-  }
-
-  .llm-hero h1 {
-    font-size: clamp(1.8rem, 10vw, 2.6rem);
-  }
-
-  .llm-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-  }
+@media print {
+  .nb-head,
+  .nb-pager,
+  .md-top { display: none; }
 }

@@ -9,39 +9,31 @@ copyright: 课程文档 CC BY-NC-SA 4.0 · 原创代码 MIT
 
 theme:
   name: material
-  language: zh
+  # "custom" is Material's Chinese with lang="zh-CN"; see overrides/partials/languages/custom.html.
+  language: custom
   custom_dir: overrides
   font: false
-  icon:
-    logo: material/head-snowflake-outline
-    repo: fontawesome/brands/github
+  favicon: assets/images/favicon.svg
   features:
     - content.code.copy
-    - content.code.select
     - navigation.footer
     - navigation.indexes
     - navigation.sections
-    - navigation.tabs
     - navigation.top
     - search.highlight
     - search.share
     - search.suggest
     - toc.follow
+    - toc.integrate
+  # The notebook kit's 白天 and 晚上 words switch data-theme on <html>, and overrides/main.html keeps
+  # Material's scheme in step with it, so neither palette carries a toggle of its own.
   palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
+    - scheme: default
       primary: custom
       accent: custom
-      toggle:
-        icon: material/weather-night
-        name: 切换到深色模式
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
+    - scheme: slate
       primary: custom
       accent: custom
-      toggle:
-        icon: material/weather-sunny
-        name: 切换到浅色模式
 
 nav:
   - 首页: index.md
@@ -99,18 +91,17 @@ markdown_extensions:
       custom_checkbox: true
 
 extra_css:
+  - stylesheets/notebook.css
   - stylesheets/extra.css
 
 extra_javascript:
   - javascripts/accessibility.js
+  - javascripts/notebook-site.js
   - javascripts/mathjax.js
   - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
 
 extra:
   generator: false
-  social:
-    - icon: fontawesome/brands/github
-      link: https://github.com/yuweiyang9611/LearnLLM
-      name: LearnLLM on GitHub
+  pdf_url: https://github.com/yuweiyang9611/LearnLLM/raw/refs/heads/main/output/pdf/LearnLLM-%E4%BB%8E%E9%9B%B6%E5%AD%A6%E4%B9%A0%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B.pdf
 
 strict: true

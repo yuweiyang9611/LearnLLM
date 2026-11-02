@@ -1,15 +1,14 @@
+// Material opens the course contents and search through checkbox labels. These are the running head's
+// 目录 and 搜索 words and the search panel's 关闭 word, so make each one a keyboard button.
 function enhanceToggleButtons() {
   const selectors = [
-    'label.md-header__button[for="__drawer"]',
-    'label.md-header__button[for="__search"]',
-    'label.md-search__icon[for="__search"]'
+    '.nb-nav label[for="__drawer"]',
+    '.nb-nav label[for="__search"]',
+    'label.md-search__close[for="__search"]'
   ];
 
   document.querySelectorAll(selectors.join(",")).forEach((label) => {
     const targetId = label.getAttribute("for");
-    const fallbackLabel = targetId === "__drawer"
-      ? "打开导航"
-      : (label.classList.contains("md-search__icon") ? "关闭搜索" : "打开搜索");
     const target = document.getElementById(targetId);
     const controlledRegion = targetId === "__drawer"
       ? document.querySelector(".md-sidebar--primary")
@@ -27,10 +26,10 @@ function enhanceToggleButtons() {
 
     if (label.dataset.keyboardReady === "true") return;
 
+    // The visible word is the accessible name, so speech input can say what it reads.
     label.setAttribute("role", "button");
     label.setAttribute("tabindex", "0");
-    label.setAttribute("aria-label", label.getAttribute("title") || fallbackLabel);
-    if (targetId === "__search" && !label.classList.contains("md-search__icon")) {
+    if (targetId === "__search" && !label.classList.contains("md-search__close")) {
       label.setAttribute("aria-haspopup", "dialog");
     }
     label.dataset.keyboardReady = "true";

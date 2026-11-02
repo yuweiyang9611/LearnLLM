@@ -5,6 +5,11 @@ window.MathJax = {
     processEscapes: true,
     processEnvironments: true
   },
+  // Display formulas sit on the text's left edge, like everything else on the page.
+  chtml: {
+    displayAlign: "left",
+    displayIndent: "0"
+  },
   options: {
     ignoreHtmlClass: ".*|",
     processHtmlClass: "arithmatex"

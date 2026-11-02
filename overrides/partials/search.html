@@ -1,0 +1,31 @@
+{#-
+  Material's search with words instead of icons. The data-md-component hooks are Material's own and must stay.
+-#}
+<div class="md-search" data-md-component="search" role="dialog" aria-label="搜索课程">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索课程" placeholder="搜索课程，例如：因果掩码、LoRA、zero_grad" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      {% if "search.suggest" in features %}
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      {% endif %}
+      <nav class="md-search__options" aria-label="{{ lang.t('search') }}">
+        <button type="reset" class="md-search__word">清空</button>
+        {% if "search.share" in features %}
+          <a href="javascript:void(0)" class="md-search__word" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">复制链接</a>
+        {% endif %}
+        <label class="md-search__word md-search__close" for="__search">关闭</label>
+      </nav>
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            {{ lang.t("search.result.initializer") }}
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

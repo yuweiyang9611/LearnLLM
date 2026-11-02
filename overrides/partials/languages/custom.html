@@ -1,0 +1,10 @@
+{#-
+  Chinese as Material ships it, with two changes: the page says zh-CN, so the
+  kit's Chinese line breaking and spacing apply, and the page contents are
+  called 本页目录 beside the course contents.
+-#}
+{% import "partials/languages/zh.html" as zh %}
+{% macro t(key) %}{{ {
+  "language": "zh-CN",
+  "toc": "本页目录"
+}[key] or zh.t(key) }}{% endmacro %}
