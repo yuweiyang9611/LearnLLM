@@ -21,6 +21,15 @@ REQUIRED_SEARCH_TERMS = (
     "RAG",
     "zero_grad",
 )
+# The shared notebook kit, copied unedited from the project index's kit/v1.
+KIT_FILES = (
+    Path("javascripts") / "theme.js",
+    Path("stylesheets") / "notebook.css",
+    Path("assets") / "images" / "favicon.svg",
+)
+# theme.js sets the colour scheme before the first paint, then the kit's styles, then the site's own.
+KIT_HEAD_ORDER = ("javascripts/theme.js", "stylesheets/notebook.css", "stylesheets/extra.css")
+CHAPTER_COUNT = 9
 
 
 class DocumentParser(HTMLParser):
@@ -35,11 +44,38 @@ class DocumentParser(HTMLParser):
         self.canonical_url = ""
         self.h1_count = 0
         self._inside_title = False
+        self._inside_head = False
+        self.head_assets: list[str] = []
+        self.running_heads = 0
+        self.palette_controls = 0
+        self.record_entries = 0
+        self.stopped_marks = 0
+        self.continue_links: list[str] = []
 
     def handle_starttag(
         self, tag: str, attrs: list[tuple[str, str | None]]
     ) -> None:
         values = {name: value or "" for name, value in attrs}
+        classes = values.get("class", "").split()
+        if tag == "head":
+            self._inside_head = True
+        if self._inside_head and (
+            (tag == "script" and values.get("src"))
+            or (tag == "link" and "stylesheet" in values.get("rel", "").split())
+        ):
+            self.head_assets.append(values.get("src") or values.get("href", ""))
+        if tag == "header" and "nb-head" in classes:
+            self.running_heads += 1
+        if values.get("data-md-component") == "palette":
+            self.palette_controls += 1
+        if "nb-entry" in classes:
+            self.record_entries += 1
+            if "aria-current" in values or values.get("data-record") == "done":
+                self.stopped_marks += 1
+        if "nb-stopped" in classes:
+            self.stopped_marks += 1
+        if tag == "a" and "llm-continue" in classes:
+            self.continue_links.append(values.get("href", ""))
         if tag == "html":
             self.html_language = values.get("lang", "")
         elif tag == "title":
@@ -62,6 +98,8 @@ class DocumentParser(HTMLParser):
     def handle_endtag(self, tag: str) -> None:
         if tag == "title":
             self._inside_title = False
+        elif tag == "head":
+            self._inside_head = False
 
     def handle_data(self, data: str) -> None:
         if self._inside_title:
@@ -96,6 +134,42 @@ def resolve_local_target(site_root: Path, page: Path, raw_url: str) -> Path | No
     return candidate.resolve()
 
 
+def notebook_errors(relative_page: Path, parser: DocumentParser) -> list[str]:
+    """Check one page against the notebook design: language, kit order, one scheme control, no false record."""
+
+    errors: list[str] = []
+    if parser.html_language != "zh-CN":
+        errors.append(f"expected lang=\"zh-CN\" in {relative_page}, found {parser.html_language!r}")
+
+    positions = []
+    for asset in KIT_HEAD_ORDER:
+        found = [i for i, url in enumerate(parser.head_assets) if url.endswith(asset)]
+        if not found:
+            errors.append(f"{asset} is not loaded in the <head> of {relative_page}")
+        positions.append(found[0] if found else -1)
+    if -1 not in positions and positions != sorted(positions):
+        errors.append(f"kit assets are out of order in {relative_page}: theme.js, notebook.css, extra.css")
+
+    if parser.running_heads != 1:
+        errors.append(f"expected one running head in {relative_page}, found {parser.running_heads}")
+    if parser.palette_controls:
+        errors.append(f"Material's palette toggle is back in {relative_page}; the kit's 白天/晚上 is the one control")
+    # The site keeps no learning record, so nothing may claim one.
+    if parser.stopped_marks:
+        errors.append(f"{relative_page} shows a stopped or done mark, but the site keeps no record")
+
+    if relative_page == Path("index.html"):
+        if len(parser.continue_links) != 1:
+            errors.append("the opening screen needs exactly one continue link")
+        elif "00_" not in unquote(parser.continue_links[0]):
+            errors.append("with no record, the continue link must offer chapter 00")
+        if parser.record_entries != CHAPTER_COUNT:
+            errors.append(
+                f"expected {CHAPTER_COUNT} chapter rows on the opening screen, found {parser.record_entries}"
+            )
+    return errors
+
+
 def verify_site(site_root: Path) -> list[str]:
     errors: list[str] = []
     required_files = (
@@ -109,6 +183,9 @@ def verify_site(site_root: Path) -> list[str]:
     for required in required_files:
         if not required.is_file():
             errors.append(f"missing required output: {required.relative_to(site_root)}")
+    for kit_file in KIT_FILES:
+        if not (site_root / kit_file).is_file():
+            errors.append(f"missing notebook kit file: {kit_file.as_posix()}")
 
     html_files = sorted(site_root.rglob("*.html"))
     if len(html_files) < 15:
@@ -153,6 +230,8 @@ def verify_site(site_root: Path) -> list[str]:
         ):
             if not parser.meta.get(meta_name):
                 errors.append(f"missing {meta_name} in {relative_page}")
+
+        errors.extend(notebook_errors(relative_page, parser))
 
         if relative_page == Path("404.html") and "noindex" not in parser.meta.get(
             "robots", ""

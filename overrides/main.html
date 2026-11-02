@@ -1,5 +1,13 @@
 {% extends "base.html" %}
 
+{#- The notebook kit: theme.js runs in <head> before the first paint, then notebook.css and extra.css load through extra_css. -#}
+{% block styles %}
+  <meta name="theme-color" content="#f4efe4">
+  {{ super() }}
+  <script src="{{ 'javascripts/theme.js' | url }}"></script>
+  <script>document.documentElement.classList.replace("no-js", "js")</script>
+{% endblock %}
+
 {% block extrahead %}
   {{ super() }}
   {% set social_title = page.meta.get("title", page.title) if page else config.site_name %}
@@ -24,10 +32,82 @@
   <meta property="og:image:type" content="image/png" />
   <meta property="og:image:width" content="1672" />
   <meta property="og:image:height" content="941" />
-  <meta property="og:image:alt" content="LearnLLM：从零理解并实现大语言模型" />
+  <meta property="og:image:alt" content="LearnLLM 课程首页：从 00 开始的章节与配套实验" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="{{ full_social_title | e }}" />
   <meta name="twitter:description" content="{{ social_description | e }}" />
   <meta name="twitter:image" content="{{ config.site_url }}assets/images/learnllm-social.png" />
-  <meta name="twitter:image:alt" content="LearnLLM：从零理解并实现大语言模型" />
+  <meta name="twitter:image:alt" content="LearnLLM 课程首页：从 00 开始的章节与配套实验" />
+{% endblock %}
+
+{#- One running head instead of Material's header and tabs. Its scheme words come from theme.js, so there is no second palette toggle. -#}
+{% block header %}
+  <header class="nb-head" data-md-component="header">
+    <script>
+      // Material keys its own dark styles to data-md-color-scheme on <body>; the kit keys its tokens to data-theme on <html>.
+      // Keep the two in step both ways, so a page never mixes day and night.
+      (() => {
+        const root = document.documentElement;
+        const body = document.body;
+        const toScheme = (theme) => (theme === "dark" ? "slate" : "default");
+        const toTheme = (scheme) => (scheme === "slate" ? "dark" : "light");
+        const followTheme = () => {
+          const scheme = toScheme(root.dataset.theme);
+          if (body.dataset.mdColorScheme === scheme) return;
+          // Material's own switch suppresses its colour transitions this way, so code blocks change with the page.
+          body.setAttribute("data-md-color-switching", "");
+          body.dataset.mdColorScheme = scheme;
+          requestAnimationFrame(() => requestAnimationFrame(() => body.removeAttribute("data-md-color-switching")));
+        };
+        const followScheme = () => {
+          const theme = toTheme(body.dataset.mdColorScheme);
+          if (root.dataset.theme === theme) return;
+          root.dataset.theme = theme;
+          document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#1c1a17" : "#f4efe4");
+          document.querySelectorAll(".nb-theme button").forEach((button) => {
+            button.setAttribute("aria-pressed", String(button.dataset.scheme === theme));
+          });
+        };
+        followTheme();
+        new MutationObserver(followTheme).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+        new MutationObserver(followScheme).observe(body, { attributes: true, attributeFilter: ["data-md-color-scheme"] });
+      })();
+    </script>
+    <a class="nb-brand" href="{{ config.extra.homepage | d(nav.homepage.url, true) | url }}" aria-label="{{ config.site_name }} 课程首页">{{ config.site_name }}</a>
+    <button class="nb-nav-toggle" type="button" aria-expanded="false" aria-controls="nb-site-nav">菜单</button>
+    <nav class="nb-nav nb-nav--collapsible" id="nb-site-nav" aria-label="站点">
+      {% if page and nav and not (page.meta and page.meta.hide and "navigation" in page.meta.hide) %}
+        <label class="nb-nav-drawer" for="__drawer">目录</label>
+      {% endif %}
+      {% if "material/search" in config.plugins %}
+        <label class="nb-nav-search" for="__search">搜索</label>
+      {% endif %}
+      <a href="{{ config.extra.pdf_url }}">PDF</a>
+      <a href="{{ config.repo_url }}">GitHub</a>
+      <a href="https://yuweiyang9611.github.io/">全部项目</a>
+    </nav>
+    {% if "material/search" in config.plugins %}
+      {% include "partials/search.html" %}
+    {% endif %}
+  </header>
+{% endblock %}
+
+{#- Previous and next as words, at the end of the text they continue. -#}
+{% block content %}
+  {{ super() }}
+  {% set hidden = page.meta and page.meta.hide and "footer" in page.meta.hide %}
+  {% if not hidden and (page.previous_page or page.next_page) %}
+    <nav class="nb-pager" aria-label="翻页">
+      {% if page.previous_page %}
+        <a class="nb-pager-prev" href="{{ page.previous_page.url | url }}" rel="prev"><span>上一页：</span>{{ page.previous_page.title }}</a>
+      {% endif %}
+      {% if page.next_page %}
+        <a class="nb-pager-next" href="{{ page.next_page.url | url }}" rel="next"><span>下一页：</span>{{ page.next_page.title }}</a>
+      {% endif %}
+    </nav>
+  {% endif %}
+{% endblock %}
+
+{% block footer %}
+  <footer class="nb-foot">{{ config.copyright }}</footer>
 {% endblock %}
