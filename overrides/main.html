@@ -92,8 +92,14 @@
   </header>
 {% endblock %}
 
+{#- A chapter opens with a thin band in its part's hue: the part's word and the chapter number, the same eyebrow as
+    its card on the opening screen. The part is the nav section, and extra.css maps each part to a hue. -#}
 {#- Previous and next as words, at the end of the text they continue. -#}
 {% block content %}
+  {% set llm_parts = {"开始学习": "start", "核心原理": "core", "训练与对齐": "train", "应用与项目": "apply"} %}
+  {% if page and page.parent and page.parent.title in llm_parts and page.title[:2].isdigit() %}
+    <p class="llm-band" data-part="{{ llm_parts[page.parent.title] }}">{{ page.parent.title }} · 第 {{ page.title[:2] }} 章</p>
+  {% endif %}
   {{ super() }}
   {% set hidden = page.meta and page.meta.hide and "footer" in page.meta.hide %}
   {% if not hidden and (page.previous_page or page.next_page) %}

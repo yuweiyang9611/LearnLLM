@@ -7,20 +7,32 @@ hide:
   - footer
 ---
 
-<div class="llm-desk" markdown>
-<div class="llm-start" markdown>
+<div class="llm-masthead" markdown>
+<div class="llm-masthead-copy" markdown>
 
 # 从零学习大语言模型 { #token-transformer-llm }
 
-[从 00 开始：建一间不会污染系统的实验室](00_学习路线与环境.md){ .llm-continue }
-
-本站不记录学习进度。想先看全貌，读[总学习指导](总学习指导.md)；读到哪一章、跑出了什么，记在自己的[实验记录](实验记录模板.md)里。
-{ .llm-note }
-
-[下载中文 PDF](https://github.com/yuweiyang9611/LearnLLM/raw/refs/heads/main/output/pdf/LearnLLM-%E4%BB%8E%E9%9B%B6%E5%AD%A6%E4%B9%A0%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B.pdf)，由网页的同一份 Markdown 生成，是 main 分支的最新版。
-{ .llm-pdf }
+九章配十二个本地实验，在 Windows 和 CPU 上亲手实现并验证一个微型大语言模型。本站不记录进度，读到哪一章记在自己的[实验记录](实验记录模板.md)里。
+{ .llm-masthead-note }
 
 </div>
+<div class="llm-stats" role="group" aria-label="课程概况">
+<p class="nb-stat" data-hue="green"><b>9</b><span>章</span></p>
+<p class="nb-stat" data-hue="cyan"><b>12</b><span>个本地实验</span></p>
+<p class="nb-stat" data-hue="blue"><b>15</b><span>个网页</span></p>
+</div>
+</div>
+
+<section class="llm-start nb-banner" aria-labelledby="llm-start-label" markdown>
+<div class="llm-start-copy" markdown>
+<p class="nb-banner-eyebrow" id="llm-start-label">从这里开始</p>
+<p class="nb-banner-title">00 学习路线与环境</p>
+<p class="nb-banner-note" markdown="span">建一间只属于本项目的 `.venv`，养成先预测、再运行、再对照的习惯。</p>
+<p class="llm-start-pdf" markdown="span">想离线读，[下载中文 PDF](https://github.com/yuweiyang9611/LearnLLM/raw/refs/heads/main/output/pdf/LearnLLM-%E4%BB%8E%E9%9B%B6%E5%AD%A6%E4%B9%A0%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B.pdf)：由网页的同一份 Markdown 生成，是 main 分支的最新版。</p>
+</div>
+<p class="llm-start-go" markdown="span">[从 00 开始](00_学习路线与环境.md){ .nb-button .nb-button--solid .llm-continue }</p>
+</section>
+
 <div class="llm-run" markdown>
 
 ## 五分钟启动 { #_4 .llm-run-label }
@@ -32,73 +44,126 @@ powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap.ps1 -Python python
 powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1
 ```
 
-在 Windows 的 PowerShell 里运行，需要 Python 3.11 或 3.12；不需要 GPU，也不需要 API Key。
+在 Windows 的 PowerShell 里运行，需要 Python 3.11 或 3.12；不需要 GPU，也不需要 API Key。想先看全貌，读[总学习指导](总学习指导.md)。
 { .llm-note }
 
-</div>
 </div>
 
 <section class="llm-section" markdown>
 
 ## 章节与配套实验 { #_3 }
 
-按编号读，每章都指向要在本地运行的实验。
+按编号读，每章都指向要在本地运行的实验。四个部分各用一种颜色：开始学习绿，核心原理青，训练与对齐蓝，应用与项目紫。
 { .llm-section-note }
 
-<ol class="llm-rows" id="_2" markdown>
-<li class="nb-entry llm-row" markdown>
-<p class="llm-key">00</p>
-<h3 class="llm-title" markdown="span">[学习路线与环境](00_学习路线与环境.md)</h3>
-<p class="llm-note" markdown="span">建一个只属于本项目的 `.venv`，养成先预测、再运行、再对照的习惯。</p>
-<p class="llm-state">实验 00</p>
+<ol class="nb-grid llm-cards" id="_2" markdown>
+<li class="nb-card nb-entry" data-part="start" markdown>
+<div class="nb-card-head" markdown>
+<div markdown>
+<p class="nb-card-eyebrow">开始学习 · 第 00 章</p>
+<h3 markdown="span">[学习路线与环境](00_学习路线与环境.md)</h3>
+</div>
+</div>
+<div class="nb-card-body" markdown>
+<p markdown="span">建一个只属于本项目的 `.venv`，养成先预测、再运行、再对照的习惯。</p>
+<p class="nb-card-meta"><span>实验 00</span></p>
+</div>
 </li>
-<li class="nb-entry llm-row" markdown>
-<p class="llm-key">01</p>
-<h3 class="llm-title" markdown="span">[数学与 PyTorch 基础](01_数学与PyTorch基础.md)</h3>
-<p class="llm-note">把 logits、Softmax、交叉熵和一次梯度更新逐行对应到代码。</p>
-<p class="llm-state">实验 01</p>
+<li class="nb-card nb-entry" data-part="core" markdown>
+<div class="nb-card-head" markdown>
+<div markdown>
+<p class="nb-card-eyebrow">核心原理 · 第 01 章</p>
+<h3 markdown="span">[数学与 PyTorch 基础](01_数学与PyTorch基础.md)</h3>
+</div>
+</div>
+<div class="nb-card-body" markdown>
+<p>把 logits、Softmax、交叉熵和一次梯度更新逐行对应到代码。</p>
+<p class="nb-card-meta"><span>实验 01</span></p>
+</div>
 </li>
-<li class="nb-entry llm-row" markdown>
-<p class="llm-key">02</p>
-<h3 class="llm-title" markdown="span">[Tokenizer 与语言模型](02_Tokenizer与语言模型.md)</h3>
-<p class="llm-note">文本怎样编码成 token？Bigram 能学到什么，又学不到什么？</p>
-<p class="llm-state">实验 02–03</p>
+<li class="nb-card nb-entry" data-part="core" markdown>
+<div class="nb-card-head" markdown>
+<div markdown>
+<p class="nb-card-eyebrow">核心原理 · 第 02 章</p>
+<h3 markdown="span">[Tokenizer 与语言模型](02_Tokenizer与语言模型.md)</h3>
+</div>
+</div>
+<div class="nb-card-body" markdown>
+<p>文本怎样编码成 token？Bigram 能学到什么，又学不到什么？</p>
+<p class="nb-card-meta"><span>实验 02–03</span></p>
+</div>
 </li>
-<li class="nb-entry llm-row" markdown>
-<p class="llm-key">03</p>
-<h3 class="llm-title" markdown="span">[注意力与 Transformer](03_注意力与Transformer.md)</h3>
-<p class="llm-note">Q/K/V、缩放和因果掩码怎样协作，怎样证明模型没有偷看未来。</p>
-<p class="llm-state">实验 04–05</p>
+<li class="nb-card nb-entry" data-part="core" markdown>
+<div class="nb-card-head" markdown>
+<div markdown>
+<p class="nb-card-eyebrow">核心原理 · 第 03 章</p>
+<h3 markdown="span">[注意力与 Transformer](03_注意力与Transformer.md)</h3>
+</div>
+</div>
+<div class="nb-card-body" markdown>
+<p>Q/K/V、缩放和因果掩码怎样协作，怎样证明模型没有偷看未来。</p>
+<p class="nb-card-meta"><span>实验 04–05</span></p>
+</div>
 </li>
-<li class="nb-entry llm-row" markdown>
-<p class="llm-key">04</p>
-<h3 class="llm-title" markdown="span">[模型家族与训练生命周期](04_模型家族与训练生命周期.md)</h3>
-<p class="llm-note">从可见信息、输出形式和训练目标，推出三类架构为什么不同。</p>
-<p class="llm-state">纸笔实验</p>
+<li class="nb-card nb-entry" data-part="train" markdown>
+<div class="nb-card-head" markdown>
+<div markdown>
+<p class="nb-card-eyebrow">训练与对齐 · 第 04 章</p>
+<h3 markdown="span">[模型家族与训练生命周期](04_模型家族与训练生命周期.md)</h3>
+</div>
+</div>
+<div class="nb-card-body" markdown>
+<p>从可见信息、输出形式和训练目标，推出三类架构为什么不同。</p>
+<p class="nb-card-meta"><span>纸笔实验</span></p>
+</div>
 </li>
-<li class="nb-entry llm-row" markdown>
-<p class="llm-key">05</p>
-<h3 class="llm-title" markdown="span">[迷你 GPT 预训练与生成](05_迷你GPT预训练与生成.md)</h3>
-<p class="llm-note">训练怎样降低 loss？checkpoint 为什么必须冻结 config 与 Tokenizer？</p>
-<p class="llm-state">实验 06–07</p>
+<li class="nb-card nb-entry" data-part="train" markdown>
+<div class="nb-card-head" markdown>
+<div markdown>
+<p class="nb-card-eyebrow">训练与对齐 · 第 05 章</p>
+<h3 markdown="span">[迷你 GPT 预训练与生成](05_迷你GPT预训练与生成.md)</h3>
+</div>
+</div>
+<div class="nb-card-body" markdown>
+<p>训练怎样降低 loss？checkpoint 为什么必须冻结 config 与 Tokenizer？</p>
+<p class="nb-card-meta"><span>实验 06–07</span></p>
+</div>
 </li>
-<li class="nb-entry llm-row" markdown>
-<p class="llm-key">06</p>
-<h3 class="llm-title" markdown="span">[SFT、LoRA 与对齐](06_SFT_LoRA与对齐.md)</h3>
-<p class="llm-note">在同一个 base 上比较随机初始化、Full SFT 与 LoRA-SFT 的任务指标和参数成本。</p>
-<p class="llm-state">实验 08、10</p>
+<li class="nb-card nb-entry" data-part="train" markdown>
+<div class="nb-card-head" markdown>
+<div markdown>
+<p class="nb-card-eyebrow">训练与对齐 · 第 06 章</p>
+<h3 markdown="span">[SFT、LoRA 与对齐](06_SFT_LoRA与对齐.md)</h3>
+</div>
+</div>
+<div class="nb-card-body" markdown>
+<p>在同一个 base 上比较随机初始化、Full SFT 与 LoRA-SFT 的任务指标和参数成本。</p>
+<p class="nb-card-meta"><span>实验 08、10</span></p>
+</div>
 </li>
-<li class="nb-entry llm-row" markdown>
-<p class="llm-key">07</p>
-<h3 class="llm-title" markdown="span">[评测、RAG 与 Agent](07_评测_RAG与Agent.md)</h3>
-<p class="llm-note">系统怎样引用证据、在证据不足时拒答，并安全地调用工具。</p>
-<p class="llm-state">实验 09、11</p>
+<li class="nb-card nb-entry" data-part="apply" markdown>
+<div class="nb-card-head" markdown>
+<div markdown>
+<p class="nb-card-eyebrow">应用与项目 · 第 07 章</p>
+<h3 markdown="span">[评测、RAG 与 Agent](07_评测_RAG与Agent.md)</h3>
+</div>
+</div>
+<div class="nb-card-body" markdown>
+<p>系统怎样引用证据、在证据不足时拒答，并安全地调用工具。</p>
+<p class="nb-card-meta"><span>实验 09、11</span></p>
+</div>
 </li>
-<li class="nb-entry llm-row" markdown>
-<p class="llm-key">08</p>
-<h3 class="llm-title" markdown="span">[结课项目](08_结课项目.md)</h3>
-<p class="llm-note">把问题、对照、指标和局限写成一份别人能复现的实验报告。</p>
-<p class="llm-state">Attention 消融示例</p>
+<li class="nb-card nb-entry" data-part="apply" markdown>
+<div class="nb-card-head" markdown>
+<div markdown>
+<p class="nb-card-eyebrow">应用与项目 · 第 08 章</p>
+<h3 markdown="span">[结课项目](08_结课项目.md)</h3>
+</div>
+</div>
+<div class="nb-card-body" markdown>
+<p>把问题、对照、指标和局限写成一份别人能复现的实验报告。</p>
+<p class="nb-card-meta"><span>Attention 消融示例</span></p>
+</div>
 </li>
 </ol>
 
