@@ -42,8 +42,19 @@
   --nb-link: var(--nb-blue);
   --nb-code: var(--nb-purple);
   --nb-rule-bold: var(--nb-ink);
-  --nb-fill: var(--nb-blue);
-  --nb-on-fill: var(--nb-paper);
+  /* Fills: the same five hues as surfaces. Paper-coloured text holds 7:1 on each, in both schemes,
+     so colour can cover a card head or a banner without the text going grey. */
+  --nb-red-fill: #a2041e;
+  --nb-green-fill: #0d5b27;
+  --nb-cyan-fill: #055868;
+  --nb-blue-fill: #1445b8;
+  --nb-purple-fill: #7528a1;
+  --nb-purple-wash: #ebdcf3;
+  --nb-ink-fill: var(--nb-ink);
+  --nb-on-fill: #f4efe4;
+  --nb-fill: var(--nb-blue-fill);
+  --nb-radius: 14px;
+  --nb-radius-control: 8px;
   --nb-sans: "NB Dot", "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
   --nb-mono: "Cascadia Mono", Consolas, "SFMono-Regular", Menlo, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", monospace;
   --nb-head-height: 3.25rem;
@@ -73,18 +84,19 @@
   --nb-blue-wash: #202b3f;
   --nb-purple: #d1adec;
   --nb-rule-bold: #958c7b;
-  --nb-fill: #1e4e95;
-  --nb-on-fill: #f4efe4;
+  --nb-purple-wash: #33263f;
+  --nb-ink-fill: #3a352d;
   color-scheme: dark;
 }
 }
 
-/* A site's own groups, such as topics or categories, borrow one colour for a word or a number. */
-[data-hue="red"] { --nb-hue: var(--nb-red); }
-[data-hue="green"] { --nb-hue: var(--nb-green); }
-[data-hue="cyan"] { --nb-hue: var(--nb-cyan); }
-[data-hue="blue"] { --nb-hue: var(--nb-blue); }
-[data-hue="purple"] { --nb-hue: var(--nb-purple); }
+/* A site's own groups, such as topics or categories, take one hue: as a word (--nb-hue), a surface (--nb-hue-fill) and a wash. */
+[data-hue="red"] { --nb-hue: var(--nb-red); --nb-hue-fill: var(--nb-red-fill); --nb-hue-wash: var(--nb-red-wash); }
+[data-hue="green"] { --nb-hue: var(--nb-green); --nb-hue-fill: var(--nb-green-fill); --nb-hue-wash: var(--nb-green-wash); }
+[data-hue="cyan"] { --nb-hue: var(--nb-cyan); --nb-hue-fill: var(--nb-cyan-fill); --nb-hue-wash: var(--nb-cyan-wash); }
+[data-hue="blue"] { --nb-hue: var(--nb-blue); --nb-hue-fill: var(--nb-blue-fill); --nb-hue-wash: var(--nb-blue-wash); }
+[data-hue="purple"] { --nb-hue: var(--nb-purple); --nb-hue-fill: var(--nb-purple-fill); --nb-hue-wash: var(--nb-purple-wash); }
+[data-hue="ink"] { --nb-hue: var(--nb-ink); --nb-hue-fill: var(--nb-ink-fill); --nb-hue-wash: var(--nb-sheet); }
 
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -158,7 +170,7 @@ kbd { padding: 0 .35em; border: 1px solid var(--nb-rule-strong); border-radius: 
   min-height: 2.5rem;
   padding: .375rem .875rem;
   border: 1px solid var(--nb-rule-strong);
-  border-radius: 2px;
+  border-radius: var(--nb-radius-control);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -173,9 +185,9 @@ kbd { padding: 0 .35em; border: 1px solid var(--nb-rule-strong); border-radius: 
 .nb-input {
   width: 100%;
   min-height: 2.5rem;
-  padding: .375rem .625rem;
+  padding: .375rem .75rem;
   border: 1px solid var(--nb-rule-strong);
-  border-radius: 2px;
+  border-radius: var(--nb-radius-control);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -314,6 +326,136 @@ input[type="checkbox"]:disabled { border: 1px dashed var(--nb-rule-strong); curs
   line-height: 1.65;
   overflow-x: auto;
   white-space: pre;
+}
+
+/* Dashboard pieces (2026-11-04): colour as surface. A card head, a banner and a progress ring carry one hue each,
+   with paper-coloured text on top, so the page has colour without any text going grey. */
+
+/* Card: a rounded sheet with a coloured head. data-hue on the card picks the head colour. */
+.nb-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: var(--nb-radius);
+  background: var(--nb-sheet);
+  overflow: hidden;
+}
+.nb-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .875rem 1.125rem .8125rem;
+  background: var(--nb-hue-fill, var(--nb-fill));
+  color: var(--nb-on-fill);
+}
+.nb-card-head > * { min-width: 0; }
+.nb-card-eyebrow { display: block; font-size: .8125rem; letter-spacing: .04em; opacity: .9; }
+.nb-card-head h2, .nb-card-head h3 { margin-top: .125rem; font-size: 1.1875rem; font-weight: 600; line-height: 1.3; }
+.nb-card-head a { color: inherit; text-decoration: none; }
+.nb-card-head a:hover, .nb-card-head a:focus-visible { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .22em; }
+.nb-card-head :focus-visible { outline-color: var(--nb-on-fill); }
+.nb-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: .625rem;
+  padding: .875rem 1.125rem 1rem;
+}
+.nb-card-body p { color: var(--nb-ink-soft); font-size: .9375rem; line-height: 1.65; }
+.nb-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: .25rem .75rem;
+  margin-top: auto;
+  color: var(--nb-ink-soft);
+  font-size: .875rem;
+  font-variant-numeric: tabular-nums;
+}
+.nb-card-meta b { color: var(--nb-ink); }
+.nb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: 1rem; }
+
+/* Progress ring: paper-coloured arc on the card's own fill. --nb-fraction is 0 to 1. */
+.nb-ring {
+  --nb-fraction: 0;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  background: conic-gradient(var(--nb-on-fill) calc(var(--nb-fraction) * 100%), rgba(255, 255, 255, .28) 0);
+  color: var(--nb-on-fill);
+  font-size: .8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: background .5s cubic-bezier(.16, 1, .3, 1);
+}
+.nb-ring > span {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--nb-hue-fill, var(--nb-fill));
+}
+
+/* Progress bar: a short track whose done part is the hue, or green where the bar means done. */
+.nb-bar { display: block; height: .375rem; border-radius: 999px; background: var(--nb-rule); overflow: hidden; }
+.nb-bar > span { display: block; height: 100%; width: calc(var(--nb-fraction, 0) * 100%); border-radius: inherit; background: var(--nb-hue-fill, var(--nb-done)); transition: width .5s cubic-bezier(.16, 1, .3, 1); }
+.nb-bar--on-fill { background: rgba(255, 255, 255, .28); }
+.nb-bar--on-fill > span { background: var(--nb-on-fill); }
+
+/* Banner: the one dark block on a page, for the place to continue. */
+.nb-banner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .75rem 1.5rem;
+  align-items: center;
+  padding: 1.125rem 1.375rem;
+  border-radius: var(--nb-radius);
+  background: var(--nb-ink-fill);
+  color: var(--nb-on-fill);
+}
+.nb-banner-eyebrow { display: block; font-size: .8125rem; letter-spacing: .04em; opacity: .85; }
+.nb-banner h2, .nb-banner p.nb-banner-title { font-size: 1.375rem; font-weight: 600; line-height: 1.3; }
+.nb-banner-note { color: inherit; font-size: .9375rem; opacity: .85; }
+.nb-banner a { color: inherit; text-decoration-color: rgba(255, 255, 255, .5); }
+.nb-banner a:hover { text-decoration-color: currentColor; }
+.nb-banner .nb-button--solid { border-color: transparent; border-radius: 999px; }
+.nb-banner :focus-visible { outline-color: var(--nb-on-fill); }
+@media (max-width: 40rem) { .nb-banner { grid-template-columns: minmax(0, 1fr); } }
+
+/* Chips: pressed is a filled pill, the rest outlined. A chip with data-hue fills with its hue when pressed. */
+.nb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  min-height: 2.25rem;
+  padding: 0 .875rem;
+  border: 1px solid var(--nb-rule-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--nb-ink);
+  font: inherit;
+  font-size: .875rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.nb-chip:hover { border-color: var(--nb-hue, var(--nb-ink)); color: var(--nb-hue, var(--nb-ink)); }
+.nb-chip[aria-pressed="true"] { border-color: transparent; background: var(--nb-hue-fill, var(--nb-ink-fill)); color: var(--nb-on-fill); font-weight: 600; }
+.nb-chip-count { opacity: .8; font-variant-numeric: tabular-nums; }
+
+/* Stat: a figure over its label, with a hue rule above. */
+.nb-stat { min-width: 0; padding-top: .5rem; border-top: 3px solid var(--nb-hue-fill, var(--nb-rule-strong)); }
+.nb-stat b { display: block; font-size: 1.5rem; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.nb-stat span { font-size: .8125rem; color: var(--nb-ink-soft); }
+
+@media (forced-colors: active) {
+  .nb-card, .nb-banner, .nb-chip { border: 1px solid CanvasText; }
+  .nb-ring { border: 1px solid CanvasText; }
 }
 
 /* Code colours. code-colors.js or an engine's highlighter sets the classes. Print stays black. */

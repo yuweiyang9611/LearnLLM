@@ -556,7 +556,7 @@ input.md-option { display: none; }
   margin: 0;
   padding: 0 .875rem;
   border: 1px solid var(--nb-ink);
-  border-radius: 2px;
+  border-radius: var(--nb-radius-control);
   background: var(--nb-paper);
   box-shadow: none;
   color: var(--nb-ink);
@@ -647,7 +647,7 @@ input.md-option { display: none; }
   min-height: 2.5rem;
   padding: .375rem .625rem;
   border: 1px solid var(--nb-rule-strong);
-  border-radius: 2px;
+  border-radius: var(--nb-radius-control);
   background: transparent;
   color: var(--nb-ink);
   font: inherit;
@@ -755,31 +755,78 @@ input.md-option { display: none; }
 .md-search-result__more[open] > summary { background: var(--nb-paper); }
 .md-search-result__terms { color: var(--nb-ink-soft); font-size: .875rem; }
 
+/* ---------------------------------------------------------------- Parts and their hues */
+
+/* The nine chapters fall into the four parts of the course contents, and each part takes one of the kit's hues as a
+   fill: on its cards' heads on the opening screen and on the band that opens each of its chapters. Red is kept for
+   what is wrong, so it is not a part colour. The same attribute sets --nb-hue and --nb-hue-wash, as data-hue does. */
+[data-part="start"] { --nb-hue: var(--nb-green); --nb-hue-fill: var(--nb-green-fill); --nb-hue-wash: var(--nb-green-wash); }   /* 开始学习 · 00 */
+[data-part="core"] { --nb-hue: var(--nb-cyan); --nb-hue-fill: var(--nb-cyan-fill); --nb-hue-wash: var(--nb-cyan-wash); }       /* 核心原理 · 01–03 */
+[data-part="train"] { --nb-hue: var(--nb-blue); --nb-hue-fill: var(--nb-blue-fill); --nb-hue-wash: var(--nb-blue-wash); }      /* 训练与对齐 · 04–06 */
+[data-part="apply"] { --nb-hue: var(--nb-purple); --nb-hue-fill: var(--nb-purple-fill); --nb-hue-wash: var(--nb-purple-wash); } /* 应用与项目 · 07–08 */
+
+/* A chapter opens with a thin band in its part's hue, carrying the same words as its card's eyebrow. It is the one
+   filled surface on a reading page; the text below it stays a reading column. */
+.md-typeset .llm-band {
+  display: block;
+  max-width: var(--nb-measure);
+  margin: 0 0 1.25rem;
+  padding: .5rem 1.125rem;
+  border-radius: var(--nb-radius);
+  background: var(--nb-hue-fill);
+  color: var(--nb-on-fill);
+  font-size: .875rem;
+  font-weight: 600;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------------------------------------------------------------- Opening screen */
 
-/* First screen: where to start, then the commands that set the lab up across the full width,
-   so each command shows whole on a desktop and only scrolls sideways on a phone. */
-.md-typeset .llm-desk {
+/* The opening screen is a dashboard: the title beside three counts from the repository, the one dark banner offering
+   the first chapter, the commands that set the lab up, then the chapters as cards. Material's prose rules reach into
+   the markup through md_in_html, so each piece resets the margins and link colours Material gives p, h3, a and li. */
+.md-typeset .llm-masthead {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 1.5rem;
-  padding-bottom: 1.75rem;
-  border-bottom: 1px solid var(--nb-rule);
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 1.5rem 3rem;
+  align-items: end;
+  margin-bottom: 1.5rem;
 }
-.md-typeset .llm-start h1 { margin: 0; }
-.md-typeset .llm-start > p { margin: 0; }
-.md-typeset a.llm-continue {
-  display: inline-block;
-  margin-top: 1rem;
-  font-size: 1.25rem;
+.md-typeset .llm-masthead h1 { margin: 0; font-size: clamp(2rem, 1.6rem + 1.4vw, 2.5rem); }
+.md-typeset .llm-masthead-note { max-width: 30rem; margin: .25rem 0 0; color: var(--nb-ink-soft); font-size: .9375rem; line-height: 1.65; }
+.md-typeset .llm-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.md-typeset .llm-stats .nb-stat { margin: 0; }
+.md-typeset .llm-stats .nb-stat b { display: block; font-size: 1.5rem; font-weight: 600; line-height: 1.2; }
+.md-typeset .llm-stats .nb-stat span { display: block; color: var(--nb-ink-soft); font-size: .875rem; }
+
+/* The banner: with no record to continue from, it offers chapter 00, and the PDF beside it. */
+.md-typeset .llm-start { margin: 0 0 1.75rem; }
+.md-typeset .llm-start p { margin: 0; }
+.md-typeset .llm-start-copy { min-width: 0; }
+.md-typeset .llm-start .nb-banner-eyebrow { font-size: .875rem; }
+.md-typeset .llm-start .nb-banner-title {
+  margin-top: .125rem;
+  font-size: 1.375rem;
   font-weight: 600;
-  line-height: 1.45;
+  line-height: 1.3;
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
-.md-typeset .llm-start > .llm-note { max-width: var(--nb-measure); margin-top: .75rem; }
-.md-typeset .llm-note { color: var(--nb-ink-soft); font-size: .9375rem; line-height: 1.65; }
-.md-typeset .llm-start > .llm-pdf { max-width: var(--nb-measure); margin-top: .5rem; font-size: .9375rem; line-height: 1.65; }
+.md-typeset .llm-start .nb-banner-note { max-width: var(--nb-measure); margin-top: .5rem; }
+.md-typeset .llm-start-pdf { max-width: var(--nb-measure); margin-top: .25rem; font-size: .9375rem; }
+.md-typeset .llm-start a { color: inherit; }
+.md-typeset .llm-start a:hover,
+.md-typeset .llm-start a:focus { color: inherit; }
+.md-typeset .llm-start code { background: rgba(255, 255, 255, .14); color: inherit; }
+.md-typeset .llm-start-go { white-space: nowrap; }
+.md-typeset a.llm-continue { font-weight: 600; text-decoration: none; }
+.md-typeset a.nb-button--solid,
+.md-typeset a.nb-button--solid:hover,
+.md-typeset a.nb-button--solid:focus { color: var(--nb-on-fill); }
+
+/* The commands that set the lab up, across the full width, so each shows whole on a desktop and scrolls on a phone. */
+.md-typeset .llm-run { margin-bottom: 1.75rem; }
 .md-typeset .llm-run h2.llm-run-label {
   display: flex;
   align-items: center;
@@ -792,14 +839,45 @@ input.md-option { display: none; }
   line-height: 1.5;
 }
 .md-typeset .llm-run .highlight { margin: 0; }
+.md-typeset .llm-note { color: var(--nb-ink-soft); font-size: .9375rem; line-height: 1.65; }
 .md-typeset .llm-run > .llm-note { max-width: var(--nb-measure); margin: .625rem 0 0; font-size: .875rem; }
 
-.md-typeset .llm-section { padding-block: 1.75rem; border-bottom: 1px solid var(--nb-rule); }
-.md-typeset .llm-section:last-child { border-bottom: 0; padding-bottom: 0; }
+/* Sections sit 1.75rem apart with no rules between them: the cards and the banner separate themselves. */
+.md-typeset .llm-section { margin-top: 1.75rem; }
 .md-typeset .llm-section > h2 { margin: 0; padding: 0; border: 0; }
-.md-typeset .llm-section-note { margin: .125rem 0 0; color: var(--nb-ink-soft); font-size: .9375rem; }
+.md-typeset .llm-section-note { max-width: var(--nb-measure); margin: .25rem 0 0; color: var(--nb-ink-soft); font-size: .9375rem; }
 
-/* Registers: ruled rows, opened by a bold rule. Chapters carry the record line; with no record it stays dashed. */
+/* Chapter cards: the head filled with the part's hue, the body on the sheet with one sentence and the lab.
+   The cards keep the register's nb-entry class for the site check, but a card has no record line to draw. */
+/* Material gives every list display: flow-root, which would undo the kit's grid. Three columns from 64rem, so the
+   nine chapters sit in three rows of three. */
+.md-typeset ol.llm-cards { display: grid; margin: 1rem 0 0; padding: 0; list-style: none; }
+[dir="ltr"] .md-typeset .llm-cards > li,
+.md-typeset .llm-cards > li { margin: 0; padding-left: 0; }
+.md-typeset .llm-cards > .nb-entry::before,
+.md-typeset .llm-cards > .nb-entry::after { display: none; }
+.md-typeset .nb-card-head > div { min-width: 0; }
+.md-typeset .nb-card-head p,
+.md-typeset .nb-card-body p { margin: 0; }
+.md-typeset .nb-card-eyebrow { font-size: .875rem; font-variant-numeric: tabular-nums; }
+.md-typeset .nb-card-head h3 {
+  margin: .125rem 0 0;
+  color: inherit;
+  font-size: 1.1875rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.md-typeset .nb-card-head a { color: inherit; text-decoration: none; }
+.md-typeset .nb-card-head a:hover,
+.md-typeset .nb-card-head a:focus { color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .22em; }
+.md-typeset .nb-card-head .headerlink { display: none; }
+/* The title's link covers the whole card. */
+.md-typeset .llm-cards h3 a::after { content: ""; position: absolute; inset: 0; }
+.md-typeset .nb-card-body p { color: var(--nb-ink-soft); font-size: .9375rem; line-height: 1.65; }
+.md-typeset .nb-card-body code { font-size: .875em; }
+.md-typeset .nb-card-meta { margin-top: auto; }
+
+/* Registers: ruled rows, opened by a bold rule, for the materials beside the chapters. */
 .md-typeset .llm-rows,
 .md-typeset .llm-notes {
   margin: .75rem 0 0;
@@ -817,12 +895,11 @@ input.md-option { display: none; }
   grid-template-columns: var(--row-key) var(--row-name) minmax(0, 1fr) var(--row-state);
   gap: .125rem 1.25rem;
   align-items: baseline;
-  padding: .75rem 0 .75rem 1.25rem;
+  padding: .75rem 0;
   border-bottom: 1px solid var(--nb-rule);
 }
 .md-typeset .llm-row > * { margin: 0; }
 .md-typeset .llm-key { color: var(--nb-ink-soft); font-size: .875rem; }
-.md-typeset ol.llm-rows .llm-key { font-family: var(--nb-mono); }
 .md-typeset .llm-row h3.llm-title { margin: 0; font-size: 1.0625rem; line-height: 1.5; }
 .md-typeset .llm-title a { text-decoration: none; }
 .md-typeset .llm-title a:hover { text-decoration: underline; text-decoration-color: currentColor; }
@@ -832,15 +909,22 @@ input.md-option { display: none; }
 
 /* Notes run the full width of the register, with their text kept to the measure. */
 .md-typeset .llm-notes > li {
-  padding: .75rem max(0px, calc(100% - var(--nb-measure) - 1.25rem)) .75rem 1.25rem;
+  padding: .75rem max(0px, calc(100% - var(--nb-measure))) .75rem 0;
   border-bottom: 1px solid var(--nb-rule);
   line-height: 1.75;
 }
 .md-typeset .llm-warn { color: var(--nb-wrong); }
 
+@media screen and (min-width: 64rem) {
+  .md-typeset ol.llm-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 @media screen and (max-width: 62rem) {
   .md-typeset .llm-row { grid-template-columns: var(--row-key) 13rem minmax(0, 1fr); }
   .md-typeset .llm-row > .llm-state { grid-column: 3; }
+}
+@media screen and (max-width: 48rem) {
+  .md-typeset .llm-masthead { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+  .md-typeset .llm-stats { max-width: 24rem; }
 }
 @media screen and (max-width: 44rem) {
   .md-typeset .llm-row { grid-template-columns: var(--row-key) minmax(0, 1fr); }
