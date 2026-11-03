@@ -3,5 +3,5 @@
 
 setuptools==84.2.1
 numpy==2.4.6
-torch==2.14.1+cpu
+torch==2.15.0+cpu
 matplotlib==3.11.2
