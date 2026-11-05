@@ -16,12 +16,12 @@
 6. 最简单的 Bigram 模型能教会我们哪些 LLM 原理？
 7. 负对数似然、交叉熵和困惑度之间是什么关系？
 
-对应实验：
+对应实验，和仓库同一个提交，在这里就能整篇读：
 
-```text
-experiments/02_tokenization.py
-experiments/03_bigram_language_model.py
-```
+<div class="nb-code llm-source" data-source="experiments/02_tokenization.py experiments/03_bigram_language_model.py">
+<div class="nb-code-tabs" role="tablist" aria-label="文件"><span class="nb-code-tab" aria-selected="true">02_tokenization.py</span><span class="nb-code-tab" aria-selected="false">03_bigram_language_model.py</span></div>
+<noscript><p class="nb-code-status">看代码需要 JavaScript。源文件在 GitHub：<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/02_tokenization.py">experiments/02_tokenization.py</a>、<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/03_bigram_language_model.py">experiments/03_bigram_language_model.py</a>。</p></noscript>
+</div>
 
 ## 第一部分：Tokenizer
 

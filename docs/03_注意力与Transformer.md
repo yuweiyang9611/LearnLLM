@@ -15,12 +15,12 @@ Bigram 只能看前一个 token。现在我们希望当前位置能读取更长�
 7. 残差、归一化、前馈网络怎样与注意力组成一个 Block？
 8. 怎样用测试证明模型没有读取未来 token？
 
-对应实验：
+对应实验，和仓库同一个提交，在这里就能整篇读：
 
-```text
-experiments/04_attention.py
-experiments/05_transformer_block.py
-```
+<div class="nb-code llm-source" data-source="experiments/04_attention.py experiments/05_transformer_block.py">
+<div class="nb-code-tabs" role="tablist" aria-label="文件"><span class="nb-code-tab" aria-selected="true">04_attention.py</span><span class="nb-code-tab" aria-selected="false">05_transformer_block.py</span></div>
+<noscript><p class="nb-code-status">看代码需要 JavaScript。源文件在 GitHub：<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/04_attention.py">experiments/04_attention.py</a>、<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/05_transformer_block.py">experiments/05_transformer_block.py</a>。</p></noscript>
+</div>
 
 ## 第一部分：缩放点积注意力
 

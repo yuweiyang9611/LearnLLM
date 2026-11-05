@@ -41,6 +41,13 @@
 .\.venv\Scripts\python.exe .\experiments\06_train_tiny_gpt.py
 ```
 
+训练脚本和第 6 节的生成脚本全文，和仓库同一个提交：
+
+<div class="nb-code llm-source" data-source="experiments/06_train_tiny_gpt.py experiments/07_generate.py">
+<div class="nb-code-tabs" role="tablist" aria-label="文件"><span class="nb-code-tab" aria-selected="true">06_train_tiny_gpt.py</span><span class="nb-code-tab" aria-selected="false">07_generate.py</span></div>
+<noscript><p class="nb-code-status">看代码需要 JavaScript。源文件在 GitHub：<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/06_train_tiny_gpt.py">experiments/06_train_tiny_gpt.py</a>、<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/07_generate.py">experiments/07_generate.py</a>。</p></noscript>
+</div>
+
 预期输出模式：
 
 ```text

@@ -52,6 +52,7 @@ nav:
       - 07 评测、RAG 与 Agent: 07_评测_RAG与Agent.md
       - 08 结课项目: 08_结课项目.md
       - 实验记录模板: 实验记录模板.md
+      - 源码: 源码.md
   - 参考:
       - PDF 章节对照与勘误: PDF_章节对照与勘误.md
       - v0.2.0 发布说明: RELEASE_v0.2.0.md
@@ -97,6 +98,9 @@ extra_css:
 extra_javascript:
   - javascripts/accessibility.js
   - javascripts/notebook-site.js
+  - javascripts/code-colors.js
+  - javascripts/source-panel.js
+  - javascripts/source-site.js
   - javascripts/mathjax.js
   - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
 

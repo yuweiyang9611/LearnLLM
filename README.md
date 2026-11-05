@@ -12,7 +12,7 @@
 
 ## 在线学习
 
-课程站点已发布到 [LearnLLM GitHub Pages](https://yuweiyang9611.github.io/LearnLLM/)，支持中文全文搜索、章节导航、深浅主题、代码复制和数学公式渲染。网页适合阅读与复习；需要运行实验时，再按下方步骤克隆仓库并创建隔离环境。
+课程站点已发布到 [LearnLLM GitHub Pages](https://yuweiyang9611.github.io/LearnLLM/)，支持中文全文搜索、章节导航、深浅主题、代码复制、数学公式渲染，以及在章节内直接阅读实验源码。网页适合阅读与复习；需要运行实验时，再按下方步骤克隆仓库并创建隔离环境。
 
 ## 从新克隆开始
 

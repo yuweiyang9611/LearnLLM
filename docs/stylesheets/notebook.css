@@ -55,6 +55,16 @@
   --nb-fill: var(--nb-blue-fill);
   --nb-radius: 14px;
   --nb-radius-control: 8px;
+  /* Code panel (2026-11-05): code sits on night paper in both schemes, read with the night text hues.
+     Every one holds 7:1 on the code paper and on the mark; tests/home.mjs checks them. */
+  --nb-code-paper: #1c1a17;
+  --nb-code-ink: #e2dac9;
+  --nb-code-soft: #c4baa7;
+  --nb-code-mark: #262930;
+  --nb-code-green: #88ca91;
+  --nb-code-cyan: #67c8db;
+  --nb-code-blue: #9abcf9;
+  --nb-code-purple: #d1adec;
   --nb-sans: "NB Dot", "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
   --nb-mono: "Cascadia Mono", Consolas, "SFMono-Regular", Menlo, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", monospace;
   --nb-head-height: 3.25rem;
@@ -181,6 +191,8 @@ kbd { padding: 0 .35em; border: 1px solid var(--nb-rule-strong); border-radius: 
 .nb-button:hover { border-color: var(--nb-link); color: var(--nb-link); }
 .nb-button[disabled] { color: var(--nb-ink-soft); border-style: dashed; cursor: not-allowed; }
 .nb-button--solid, .nb-button--solid:hover { border-color: var(--nb-link); background: var(--nb-fill); color: var(--nb-on-fill); }
+/* A solid button that cannot be pressed yet drops its fill, so its words never sit on a surface they cannot be read on. */
+.nb-button--solid[disabled], .nb-button--solid[disabled]:hover { border: 1px dashed var(--nb-rule-strong); background: transparent; color: var(--nb-ink-soft); }
 
 .nb-input {
   width: 100%;
@@ -468,6 +480,42 @@ input[type="checkbox"]:disabled { border: 1px dashed var(--nb-rule-strong); curs
   .tok-number { color: var(--nb-purple); }
   .tok-meta { color: var(--nb-ink-soft); }
 }
+
+/* Code panel (2026-11-05): source read in place instead of on GitHub. The code sits on night paper in both
+   schemes, so the night text hues colour the tokens by day too. The site supplies the behaviour: tabs, loading
+   the text, colouring it with code-colors.js or an engine's highlighter, and running it. */
+.nb-code { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; overflow: hidden; border: 1px solid var(--nb-rule); border-radius: var(--nb-radius); background: var(--nb-paper); }
+/* Grid items take their content as a minimum width, so every part of the panel gives that up: the code scrolls inside its view instead of widening the page. */
+.nb-code > * { min-width: 0; }
+.nb-code-tabs { display: flex; flex-wrap: wrap; align-items: stretch; margin: 0; padding: 0; border-bottom: 1px solid var(--nb-rule); background: var(--nb-sheet); list-style: none; }
+.nb-code-tab { min-height: 2.5rem; padding: 0 .875rem; border: 0; border-right: 1px solid var(--nb-rule); background: transparent; color: var(--nb-ink-soft); font: 600 .8125rem/1 var(--nb-mono); cursor: pointer; }
+.nb-code-tab:hover { color: var(--nb-ink); }
+.nb-code-tab[aria-selected="true"] { background: var(--nb-code-paper); color: var(--nb-code-ink); }
+.nb-code-tab:focus-visible { outline: 2px solid var(--nb-link); outline-offset: -2px; }
+.nb-code-note { align-self: center; margin-left: auto; padding: 0 .875rem; color: var(--nb-ink-soft); font-size: .8125rem; font-variant-numeric: tabular-nums; }
+.nb-code-view { max-height: var(--nb-code-height, 34rem); margin: 0; overflow: auto; background: var(--nb-code-paper); color: var(--nb-code-ink); font-family: var(--nb-mono); font-size: .8125rem; line-height: 1.65; tab-size: 4; }
+.nb-code-view code { display: block; min-width: max-content; padding: .5rem 0; font: inherit; }
+.nb-code-line { display: grid; grid-template-columns: 3.25rem minmax(0, 1fr); padding-right: 1rem; white-space: pre; }
+.nb-code-line::before { content: attr(data-line); padding-right: 1rem; color: var(--nb-code-soft); text-align: right; user-select: none; }
+.nb-code-text { min-width: 0; }
+.nb-code-line[data-marked] { background: var(--nb-code-mark); box-shadow: inset 3px 0 var(--nb-code-blue); }
+.nb-code .tok-comment, .nb-code .tok-meta { color: var(--nb-code-soft); }
+.nb-code .tok-keyword, .nb-code .tok-number { color: var(--nb-code-purple); }
+.nb-code .tok-type { color: var(--nb-code-cyan); }
+.nb-code .tok-call { color: var(--nb-code-blue); }
+.nb-code .tok-string { color: var(--nb-code-green); }
+.nb-code-editor { display: block; width: 100%; min-height: 18rem; max-height: var(--nb-code-height, 34rem); margin: 0; padding: .75rem 1rem; border: 0; border-radius: 0; background: var(--nb-code-paper); color: var(--nb-code-ink); font: .8125rem/1.65 var(--nb-mono); tab-size: 4; white-space: pre; overflow: auto; resize: vertical; }
+.nb-code-editor:focus-visible { outline: 2px solid var(--nb-link); outline-offset: -2px; }
+.nb-code-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; padding: .5rem .75rem; border-top: 1px solid var(--nb-rule); background: var(--nb-sheet); font-size: .875rem; }
+.nb-code-actions .nb-code-link { margin-left: auto; }
+.nb-code-status { flex: 1 1 100%; color: var(--nb-ink-soft); font-variant-numeric: tabular-nums; }
+.nb-code-output { padding: .625rem .875rem .875rem; border-top: 1px solid var(--nb-rule); font-size: .875rem; }
+.nb-code-output-label { color: var(--nb-run); font-weight: 600; }
+.nb-code-output[data-state="done"] .nb-code-output-label { color: var(--nb-done); }
+.nb-code-output[data-state="wrong"] .nb-code-output-label { color: var(--nb-wrong); }
+.nb-code-output pre { max-height: 16rem; margin: .25rem 0 0; overflow: auto; font-family: var(--nb-mono); font-size: .8125rem; line-height: 1.65; white-space: pre-wrap; }
+@media print { .nb-code-view, .nb-code-editor { max-height: none; background: none; color: inherit; } }
+@media (forced-colors: active) { .nb-code, .nb-code-tab[aria-selected="true"] { border: 1px solid CanvasText; } }
 
 @media (prefers-reduced-motion: reduce) {
   @view-transition { navigation: none; }

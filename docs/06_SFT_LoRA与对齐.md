@@ -21,6 +21,13 @@ $SftRun = ".\outputs\sft\lesson-$(Get-Date -Format yyyyMMdd-HHmmssfff)"
 .\.venv\Scripts\python.exe .\experiments\10_sft_tiny_gpt.py --quick --output-dir $SftRun
 ```
 
+实验 10 和第 2 节的实验 08 全文，和仓库同一个提交：
+
+<div class="nb-code llm-source" data-source="experiments/10_sft_tiny_gpt.py experiments/08_lora.py">
+<div class="nb-code-tabs" role="tablist" aria-label="文件"><span class="nb-code-tab" aria-selected="true">10_sft_tiny_gpt.py</span><span class="nb-code-tab" aria-selected="false">08_lora.py</span></div>
+<noscript><p class="nb-code-status">看代码需要 JavaScript。源文件在 GitHub：<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/10_sft_tiny_gpt.py">experiments/10_sft_tiny_gpt.py</a>、<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/08_lora.py">experiments/08_lora.py</a>。</p></noscript>
+</div>
+
 `--quick` 把每个训练分支固定为 30 步，但仍默认运行 seed 42/43/44。所有关键输入和输出都可配置；例如：
 
 ```powershell

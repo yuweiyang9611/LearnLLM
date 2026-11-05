@@ -10,6 +10,8 @@
 
 {% block extrahead %}
   {{ super() }}
+  {#- The source panel and the 源码 page fetch assets/source/ from the site root, wherever the page sits. -#}
+  <meta name="llm-base" content="{{ base_url }}" />
   {% set social_title = page.meta.get("title", page.title) if page else config.site_name %}
   {% set social_description = page.meta.get("description", config.site_description) if page else config.site_description %}
   {% set full_social_title = social_title if not page or page.is_homepage else social_title ~ " · " ~ config.site_name %}

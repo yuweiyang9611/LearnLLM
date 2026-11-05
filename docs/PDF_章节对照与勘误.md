@@ -43,12 +43,12 @@
 
 | 实验 | 相对前一阶段新增的能力 | 主要不变量或验收点 | PDF 物理页 |
 | --- | --- | --- | --- |
-| `experiments/00_environment_check.py` | 建立项目内 `.venv`，确认解释器、依赖、设备和随机种子可复现 | Python 位于 `.venv`；NumPy/PyTorch 可导入；CPU 也通过；同种子结果一致 | 7-30 的实验前置 |
-| `experiments/01_math_foundations.py` | 从普通数值进入张量计算：点积、矩阵乘法、数值稳定 Softmax、交叉熵 | shape 正确；Softmax 每行和为 1；极大 logits 不产生 `nan`；正确类别概率增大时 CE 下降 | 12-13、16-20 |
-| `experiments/02_tokenization.py` | 把字符串变成 token/id，并能从 id 还原；显式处理词表和未知字符 | 编码结果为整数序列；已知文本往返一致；未知字符行为有定义 | 7-13；扩展阅读 87-93 |
-| `experiments/03_bigram_language_model.py` | 从静态 token 映射进入最小“预测下一个 token”模型；增加 NLL、PPL 与采样 | 概率归一；NLL/PPL 可解释；固定种子采样可复现；模型仅使用前一个 token | 12-13 |
-| `experiments/04_attention.py` | 用 Q、K、V 替代 bigram 查表；增加缩放点积注意力和因果掩码 | 权重和为 1；输出 shape 正确；被遮挡权重为 0；修改未来 token 不改变过去位置 | 15-20 |
-| `experiments/05_transformer_block.py` | 在单头注意力上增加多头拆分/合并、残差、归一化和 FFN，组成 Decoder Block | `D % H == 0`；输入输出均为 `(B,T,D)`；因果性不被多头和 FFN 破坏；反向传播有有限梯度 | 19-30 |
+| [`experiments/00_environment_check.py`](源码.md?path=experiments/00_environment_check.py) | 建立项目内 `.venv`，确认解释器、依赖、设备和随机种子可复现 | Python 位于 `.venv`；NumPy/PyTorch 可导入；CPU 也通过；同种子结果一致 | 7-30 的实验前置 |
+| [`experiments/01_math_foundations.py`](源码.md?path=experiments/01_math_foundations.py) | 从普通数值进入张量计算：点积、矩阵乘法、数值稳定 Softmax、交叉熵 | shape 正确；Softmax 每行和为 1；极大 logits 不产生 `nan`；正确类别概率增大时 CE 下降 | 12-13、16-20 |
+| [`experiments/02_tokenization.py`](源码.md?path=experiments/02_tokenization.py) | 把字符串变成 token/id，并能从 id 还原；显式处理词表和未知字符 | 编码结果为整数序列；已知文本往返一致；未知字符行为有定义 | 7-13；扩展阅读 87-93 |
+| [`experiments/03_bigram_language_model.py`](源码.md?path=experiments/03_bigram_language_model.py) | 从静态 token 映射进入最小“预测下一个 token”模型；增加 NLL、PPL 与采样 | 概率归一；NLL/PPL 可解释；固定种子采样可复现；模型仅使用前一个 token | 12-13 |
+| [`experiments/04_attention.py`](源码.md?path=experiments/04_attention.py) | 用 Q、K、V 替代 bigram 查表；增加缩放点积注意力和因果掩码 | 权重和为 1；输出 shape 正确；被遮挡权重为 0；修改未来 token 不改变过去位置 | 15-20 |
+| [`experiments/05_transformer_block.py`](源码.md?path=experiments/05_transformer_block.py) | 在单头注意力上增加多头拆分/合并、残差、归一化和 FFN，组成 Decoder Block | `D % H == 0`；输入输出均为 `(B,T,D)`；因果性不被多头和 FFN 破坏；反向传播有有限梯度 | 19-30 |
 
 这里选择 Decoder-only Block，是为了直接连接现代生成式 LLM。它吸收了原书第 2 章的基础组件，但没有照搬原书的完整机器翻译 Encoder-Decoder 示例。
 
