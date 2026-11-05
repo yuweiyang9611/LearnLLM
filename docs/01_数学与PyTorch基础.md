@@ -16,11 +16,12 @@
 4. 为什么直接计算 `exp(1000)` 会出错？
 5. 交叉熵怎样把一次预测变成一个可优化的标量 loss？
 
-对应实验：
+对应实验，和仓库同一个提交，在这里就能整篇读：
 
-```text
-experiments/01_math_foundations.py
-```
+<div class="nb-code llm-source" data-source="experiments/01_math_foundations.py">
+<div class="nb-code-tabs" role="tablist" aria-label="文件"><span class="nb-code-tab" aria-selected="true">01_math_foundations.py</span></div>
+<noscript><p class="nb-code-status">看代码需要 JavaScript。源文件在 GitHub：<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/01_math_foundations.py">experiments/01_math_foundations.py</a>。</p></noscript>
+</div>
 
 ## 直觉：logits 是选票，Softmax 是换算规则
 

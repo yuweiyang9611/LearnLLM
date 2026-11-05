@@ -30,6 +30,28 @@ KIT_FILES = (
 # theme.js sets the colour scheme before the first paint, then the kit's styles, then the site's own.
 KIT_HEAD_ORDER = ("javascripts/theme.js", "stylesheets/notebook.css", "stylesheets/extra.css")
 CHAPTER_COUNT = 9
+# Source read in place: scripts/bundle_source.py copies the course files into assets/source/ before the build,
+# and a page shows them in the panel or links them on the 源码 page instead of sending the reader to GitHub.
+REPOSITORY_URL = "https://github.com/yuweiyang9611/LearnLLM"
+SOURCE_PAGE = "源码/"
+MIN_BUNDLED_FILES = 30
+REQUIRED_BUNDLED_FILES = (
+    "experiments/00_environment_check.py",
+    "experiments/01_math_foundations.py",
+    "experiments/02_tokenization.py",
+    "experiments/03_bigram_language_model.py",
+    "experiments/04_attention.py",
+    "experiments/05_transformer_block.py",
+    "experiments/06_train_tiny_gpt.py",
+    "experiments/07_generate.py",
+    "experiments/08_lora.py",
+    "experiments/09_tiny_rag.py",
+    "experiments/10_sft_tiny_gpt.py",
+    "experiments/11_local_agent.py",
+    "examples/capstone_attention/run.py",
+    "src/learn_llm/attention.py",
+)
+GITHUB_FILE_LINK = re.compile(re.escape(REPOSITORY_URL) + r"/(?P<kind>blob|tree)/[^/]+/(?P<path>.+)$")
 
 
 class DocumentParser(HTMLParser):
@@ -51,12 +73,28 @@ class DocumentParser(HTMLParser):
         self.record_entries = 0
         self.stopped_marks = 0
         self.continue_links: list[str] = []
+        self._inside_noscript = False
+        # Source read in place: the panels' bundled paths, the links into the 源码 page, and every GitHub link
+        # outside <noscript>, which is the one place a page may still name GitHub for a bundled file.
+        self.source_panels: list[str] = []
+        self.source_page_links: list[str] = []
+        self.github_links: list[str] = []
 
     def handle_starttag(
         self, tag: str, attrs: list[tuple[str, str | None]]
     ) -> None:
         values = {name: value or "" for name, value in attrs}
         classes = values.get("class", "").split()
+        if tag == "noscript":
+            self._inside_noscript = True
+        if "llm-source" in classes and values.get("data-source"):
+            self.source_panels.extend(values["data-source"].split())
+        if tag == "a" and values.get("href"):
+            href = values["href"]
+            if href.startswith(REPOSITORY_URL) and not self._inside_noscript:
+                self.github_links.append(href)
+            if "?" in href and unquote(urlsplit(href).path).endswith(SOURCE_PAGE):
+                self.source_page_links.append(href)
         if tag == "head":
             self._inside_head = True
         if self._inside_head and (
@@ -100,6 +138,8 @@ class DocumentParser(HTMLParser):
             self._inside_title = False
         elif tag == "head":
             self._inside_head = False
+        elif tag == "noscript":
+            self._inside_noscript = False
 
     def handle_data(self, data: str) -> None:
         if self._inside_title:
@@ -170,8 +210,71 @@ def notebook_errors(relative_page: Path, parser: DocumentParser) -> list[str]:
     return errors
 
 
+def load_source_bundle(site_root: Path) -> tuple[set[str], list[str]]:
+    """Read assets/source/index.json and check that every file it lists is in the site."""
+
+    errors: list[str] = []
+    index_path = site_root / "assets" / "source" / "index.json"
+    if not index_path.is_file():
+        return set(), ["missing source bundle: assets/source/index.json (run scripts/bundle_source.py first)"]
+    try:
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        return set(), [f"invalid source bundle index: {error}"]
+    if index.get("version") != 1 or not isinstance(index.get("files"), list):
+        return set(), ["source bundle index must be version 1 with a files list"]
+    if not str(index.get("blobBase", "")).startswith(f"{REPOSITORY_URL}/blob/"):
+        errors.append("source bundle blobBase must point at the repository")
+    bundled = set()
+    for entry in index["files"]:
+        path = str(entry.get("path", ""))
+        bundled.add(path)
+        if not (site_root / "assets" / "source" / (path + ".txt")).is_file():
+            errors.append(f"bundled source file is missing: {path}")
+        if not isinstance(entry.get("lines"), int) or not isinstance(entry.get("bytes"), int):
+            errors.append(f"bundled source entry needs integer lines and bytes: {path}")
+    if len(bundled) < MIN_BUNDLED_FILES:
+        errors.append(f"source bundle must list at least {MIN_BUNDLED_FILES} files, found {len(bundled)}")
+    for required in REQUIRED_BUNDLED_FILES:
+        if required not in bundled:
+            errors.append(f"source bundle is missing a file the chapters read: {required}")
+    return bundled, errors
+
+
+def source_errors(relative_page: Path, parser: DocumentParser, bundled: set[str]) -> list[str]:
+    """Check one page against the source-in-place rule: no GitHub link for a bundled file or directory
+    outside <noscript>, and every panel and 源码 link names a bundled path."""
+
+    errors: list[str] = []
+    for href in parser.github_links:
+        match = GITHUB_FILE_LINK.match(href.split("#", 1)[0].split("?", 1)[0])
+        if not match:
+            continue
+        path = unquote(match.group("path")).rstrip("/")
+        if match.group("kind") == "blob" and path in bundled:
+            errors.append(f"{relative_page} sends the reader to GitHub for a bundled file: {path}")
+        elif match.group("kind") == "tree" and any(item.startswith(path + "/") for item in bundled):
+            errors.append(f"{relative_page} sends the reader to GitHub for a bundled directory: {path}")
+    for path in parser.source_panels:
+        if path not in bundled:
+            errors.append(f"{relative_page} embeds a source panel for a file outside the bundle: {path}")
+    for href in parser.source_page_links:
+        query = dict(part.split("=", 1) for part in urlsplit(href).query.split("&") if "=" in part)
+        path = unquote(query.get("path", "")).strip("/")
+        directory = unquote(query.get("dir", "")).strip("/")
+        if path and path not in bundled:
+            errors.append(f"{relative_page} links the 源码 page to a file outside the bundle: {path}")
+        if directory and not any(item.startswith(directory + "/") for item in bundled):
+            errors.append(f"{relative_page} links the 源码 page to a directory outside the bundle: {directory}")
+        if not path and not directory:
+            errors.append(f"{relative_page} links the 源码 page with neither path nor dir: {href}")
+    return errors
+
+
 def verify_site(site_root: Path) -> list[str]:
     errors: list[str] = []
+    bundled, bundle_errors = load_source_bundle(site_root)
+    errors.extend(bundle_errors)
     required_files = (
         site_root / "index.html",
         site_root / "404.html",
@@ -232,6 +335,10 @@ def verify_site(site_root: Path) -> list[str]:
                 errors.append(f"missing {meta_name} in {relative_page}")
 
         errors.extend(notebook_errors(relative_page, parser))
+        errors.extend(source_errors(relative_page, parser, bundled))
+
+        if relative_page == Path(SOURCE_PAGE) / "index.html" and "noindex" not in parser.meta.get("robots", ""):
+            errors.append("the 源码 page must be marked noindex: its content comes from the query string")
 
         if relative_page == Path("404.html") and "noindex" not in parser.meta.get(
             "robots", ""
@@ -289,7 +396,11 @@ def main() -> int:
         return 1
 
     page_count = len(list(site_root.rglob("*.html")))
-    print(f"PASS: verified {page_count} HTML pages with no broken local links or emails.")
+    bundled, _ = load_source_bundle(site_root)
+    print(
+        f"PASS: verified {page_count} HTML pages with no broken local links or emails, "
+        f"and {len(bundled)} bundled source files read in place."
+    )
     return 0
 
 

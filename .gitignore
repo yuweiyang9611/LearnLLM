@@ -14,6 +14,8 @@ checkpoints/
 outputs/
 runs/
 /site/
+# Source bundle, written by scripts/bundle_source.py before each site build
+/docs/assets/source/
 
 # Local secrets and credentials
 .env

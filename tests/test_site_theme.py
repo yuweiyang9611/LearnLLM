@@ -9,7 +9,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 # SHA-256 of kit/v1 in the project index repository, with LF line endings. A published kit version never
 # changes, so a different hash means the site's copy was edited; change the kit upstream instead.
 KIT_V1 = {
-    "docs/stylesheets/notebook.css": "77b6f7006dedd30fac7baa290419b4784d11a349bb0be92605311eb3a42c4857",
+    # kit/v1 of 2026-11-05: adds the code panel (.nb-code and the night code hues) for source read in place.
+    "docs/stylesheets/notebook.css": "9953db9200fc2a6306d53350d61cabddf03cdb7991f12abeed0aac206a82923b",
     "docs/javascripts/theme.js": "2f26afc56d0152d02f363af644ac51b552a890e02d3e81542795aba6b8d5d5e0",
     "docs/assets/images/favicon.svg": "3ea07acd66b71bcef6462252c4e437ee6622f57898089bbb891410e57b20dc0e",
 }

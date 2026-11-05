@@ -44,6 +44,13 @@ RAG 通常不更新模型参数。它把外部资料放入上下文，改善可�
 .\.venv\Scripts\python.exe .\experiments\09_tiny_rag.py
 ```
 
+实验 09 和第 9 节的实验 11 全文，和仓库同一个提交：
+
+<div class="nb-code llm-source" data-source="experiments/09_tiny_rag.py experiments/11_local_agent.py">
+<div class="nb-code-tabs" role="tablist" aria-label="文件"><span class="nb-code-tab" aria-selected="true">09_tiny_rag.py</span><span class="nb-code-tab" aria-selected="false">11_local_agent.py</span></div>
+<noscript><p class="nb-code-status">看代码需要 JavaScript。源文件在 GitHub：<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/09_tiny_rag.py">experiments/09_tiny_rag.py</a>、<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/11_local_agent.py">experiments/11_local_agent.py</a>。</p></noscript>
+</div>
+
 实验只用仓库内 `data/rag_documents.json`，流程是：
 
 1. 读取文档和稳定 ID。
