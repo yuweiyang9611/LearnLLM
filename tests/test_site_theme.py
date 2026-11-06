@@ -9,8 +9,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 # SHA-256 of kit/v1 in the project index repository, with LF line endings. A published kit version never
 # changes, so a different hash means the site's copy was edited; change the kit upstream instead.
 KIT_V1 = {
-    # kit/v1 of 2026-11-05: adds the code panel (.nb-code and the night code hues) for source read in place.
-    "docs/stylesheets/notebook.css": "9953db9200fc2a6306d53350d61cabddf03cdb7991f12abeed0aac206a82923b",
+    # kit/v1 of 2026-11-06: adds the loop band (.nb-steps and its four states) for the loop on every chapter.
+    "docs/stylesheets/notebook.css": "f6f8b7094199d012536942ccc75fce688950b3823207ce5456577d1086c82369",
     "docs/javascripts/theme.js": "2f26afc56d0152d02f363af644ac51b552a890e02d3e81542795aba6b8d5d5e0",
     "docs/assets/images/favicon.svg": "3ea07acd66b71bcef6462252c4e437ee6622f57898089bbb891410e57b20dc0e",
 }
@@ -27,7 +27,9 @@ CHAPTERS = "".join('<li class="nb-entry llm-row"></li>' for _ in range(9))
 HOME_BODY = (
     '<body><header class="nb-head"></header>'
     '<a class="llm-continue" href="00_%E5%AD%A6%E4%B9%A0/">从 00 开始</a>'
-    f"<ol>{CHAPTERS}</ol></body>"
+    f"<ol>{CHAPTERS}</ol>"
+    '<div id="llm-backup-panel"><button id="llm-export"></button><input id="llm-import" type="file">'
+    '<button id="llm-reset"></button></div></body>'
 )
 
 
@@ -76,10 +78,22 @@ class NotebookPageCheckTests(unittest.TestCase):
         verify_site, parser = parse(f'<html lang="zh-CN">{head}<body><header class="nb-head"></header></body></html>')
         self.assertIn("out of order", " ".join(verify_site.notebook_errors(Path("a/index.html"), parser)))
 
-    def test_a_record_mark_without_a_record_is_caught(self):
-        body = HOME_BODY.replace('<li class="nb-entry llm-row"></li>', '<li class="nb-entry" aria-current="step"></li>', 1)
+    def test_a_static_record_mark_is_caught(self):
+        # The record lives in the browser: script sets data-record and aria-current, the static page never does.
+        for mark in ('aria-current="step"', 'data-record="done"', 'data-record="now"'):
+            body = HOME_BODY.replace('<li class="nb-entry llm-row"></li>', f'<li class="nb-entry" {mark}></li>', 1)
+            verify_site, parser = parse(f'<html lang="zh-CN">{HEAD}{body}</html>')
+            self.assertIn("static page", " ".join(verify_site.notebook_errors(Path("index.html"), parser)), mark)
+
+    def test_an_empty_record_attribute_for_script_to_fill_passes(self):
+        body = HOME_BODY.replace('<li class="nb-entry llm-row"></li>', '<li class="nb-entry" data-record=""></li>', 1)
         verify_site, parser = parse(f'<html lang="zh-CN">{HEAD}{body}</html>')
-        self.assertIn("no record", " ".join(verify_site.notebook_errors(Path("index.html"), parser)))
+        self.assertEqual(verify_site.notebook_errors(Path("index.html"), parser), [])
+
+    def test_opening_screen_needs_the_backup_controls(self):
+        body = HOME_BODY.replace('<button id="llm-reset"></button>', "")
+        verify_site, parser = parse(f'<html lang="zh-CN">{HEAD}{body}</html>')
+        self.assertIn("#llm-reset", " ".join(verify_site.notebook_errors(Path("index.html"), parser)))
 
     def test_opening_screen_must_offer_chapter_00(self):
         body = HOME_BODY.replace("00_%E5%AD%A6%E4%B9%A0/", "01_x/")

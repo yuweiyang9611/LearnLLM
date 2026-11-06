@@ -18,7 +18,7 @@
 
 对应实验，和仓库同一个提交，在这里就能整篇读：
 
-<div class="nb-code llm-source" data-source="experiments/02_tokenization.py experiments/03_bigram_language_model.py">
+<div class="nb-code llm-source" id="llm-source" data-run="experiments/03_bigram_language_model.py" data-source="experiments/02_tokenization.py experiments/03_bigram_language_model.py">
 <div class="nb-code-tabs" role="tablist" aria-label="文件"><span class="nb-code-tab" aria-selected="true">02_tokenization.py</span><span class="nb-code-tab" aria-selected="false">03_bigram_language_model.py</span></div>
 <noscript><p class="nb-code-status">看代码需要 JavaScript。源文件在 GitHub：<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/02_tokenization.py">experiments/02_tokenization.py</a>、<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/03_bigram_language_model.py">experiments/03_bigram_language_model.py</a>。</p></noscript>
 </div>
@@ -410,6 +410,8 @@ $OutputEncoding = [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
 4. 保持语料不变，比较字符词表与简单按空格分词的词表大小、序列长度和 OOV 行为。
 5. 解释为什么“Tokenizer 词表更大”不一定总是更好。提示：考虑 embedding 参数量、序列长度和稀有 token。
 
+<div class="llm-quiz" id="llm-quiz" data-chapter="02"></div>
+
 ## 掌握检查
 
 - [ ] 我能区分 Tokenizer 与语言模型。
@@ -423,3 +425,5 @@ $OutputEncoding = [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
 - [ ] 我知道训练 PPL 下降不等于真正理解或泛化。
 
 完成后进入 [03 注意力与 Transformer](./03_注意力与Transformer.md)：模型将不再只看前一个 token，而是学习如何从整个可见上下文中聚合信息。
+
+<div class="llm-notepad" id="llm-notepad" data-chapter="02"></div>

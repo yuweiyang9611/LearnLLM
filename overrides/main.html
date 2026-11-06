@@ -12,6 +12,12 @@
   {{ super() }}
   {#- The source panel and the 源码 page fetch assets/source/ from the site root, wherever the page sits. -#}
   <meta name="llm-base" content="{{ base_url }}" />
+  {#- A chapter page names its number, so the record scripts know which chapter they are on. -#}
+  {% set llm_chapter_parts = ["开始学习", "核心原理", "训练与对齐", "应用与项目"] %}
+  {% set llm_is_chapter = page and page.parent and page.parent.title in llm_chapter_parts and page.title[:2].isdigit() %}
+  {% if llm_is_chapter %}
+    <meta name="llm-chapter" content="{{ page.title[:2] }}" />
+  {% endif %}
   {% set social_title = page.meta.get("title", page.title) if page else config.site_name %}
   {% set social_description = page.meta.get("description", config.site_description) if page else config.site_description %}
   {% set full_social_title = social_title if not page or page.is_homepage else social_title ~ " · " ~ config.site_name %}
@@ -102,7 +108,30 @@
   {% if page and page.parent and page.parent.title in llm_parts and page.title[:2].isdigit() %}
     <p class="llm-band" data-part="{{ llm_parts[page.parent.title] }}">{{ page.parent.title }} · 第 {{ page.title[:2] }} 章</p>
   {% endif %}
-  {{ super() }}
+  {% if page and page.parent and page.parent.title in llm_parts and page.title[:2].isdigit() and "</h1>" in page.content %}
+    {#- The loop band under the title: the kit's .nb-steps, one pill per step in the order the reader takes them.
+        The page renders every step pending (none for a step the chapter lacks: no panel, no script that runs in
+        the browser); loop-site.js reads the states from the learning record. -#}
+    {% set llm_has_panel = 'class="nb-code llm-source"' in page.content %}
+    {% set llm_can_run = ' data-run="' in page.content %}
+    {% set llm_steps %}
+<ol class="nb-steps llm-steps" id="llm-steps" data-chapter="{{ page.title[:2] }}" aria-label="这一章的五步">
+<li data-step="read" data-state="pending"><a href="#">读</a></li>
+<li data-step="code" data-state="{{ 'pending' if llm_has_panel else 'none' }}"><a href="#llm-source">看代码</a></li>
+<li data-step="run" data-state="{{ 'pending' if llm_can_run else 'none' }}"><a href="#llm-source">跑</a></li>
+<li data-step="quiz" data-state="pending"><a href="#llm-quiz">自测</a><span class="nb-steps-count">3 题</span></li>
+<li data-step="note" data-state="pending"><a href="#llm-notepad">记一笔</a></li>
+</ol>
+    {% endset %}
+    {% include "partials/tags.html" %}
+    {% include "partials/actions.html" %}
+    {{ page.content | replace("</h1>", "</h1>" ~ llm_steps, 1) }}
+    {% include "partials/source-file.html" %}
+    {% include "partials/feedback.html" %}
+    {% include "partials/comments.html" %}
+  {% else %}
+    {{ super() }}
+  {% endif %}
   {% set hidden = page.meta and page.meta.hide and "footer" in page.meta.hide %}
   {% if not hidden and (page.previous_page or page.next_page) %}
     <nav class="nb-pager" aria-label="翻页">

@@ -78,7 +78,7 @@ class BundleTests(unittest.TestCase):
         panels = 0
         for page in (PROJECT_ROOT / "docs").glob("*.md"):
             text = page.read_text(encoding="utf-8")
-            for match in re.finditer(r'class="nb-code llm-source" data-source="([^"]+)"', text):
+            for match in re.finditer(r'class="nb-code llm-source"[^>]*data-source="([^"]+)"', text):
                 panels += 1
                 for path in match.group(1).split():
                     self.assertIn(path, bundled, page.name)

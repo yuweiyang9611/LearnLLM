@@ -50,8 +50,23 @@ REQUIRED_BUNDLED_FILES = (
     "experiments/11_local_agent.py",
     "examples/capstone_attention/run.py",
     "src/learn_llm/attention.py",
+    "data/tiny_corpus.txt",
+    "data/rag_documents.json",
 )
 GITHUB_FILE_LINK = re.compile(re.escape(REPOSITORY_URL) + r"/(?P<kind>blob|tree)/[^/]+/(?P<path>.+)$")
+# The loop: every chapter page carries the kit's band under its title with these five steps, in this order, each
+# pending in the static page (none for a step the chapter lacks), a self-check marker and a note marker; the
+# record scripts fill them. The scripts that run in the browser are the three that need no torch.
+LOOP_STEPS = ("read", "code", "run", "quiz", "note")
+BROWSER_RUNNABLE = frozenset(
+    {
+        "experiments/03_bigram_language_model.py",
+        "experiments/09_tiny_rag.py",
+        "experiments/11_local_agent.py",
+    }
+)
+BROWSER_FILES = ("assets/browser/_common.py", "assets/browser/learn_llm/__init__.py")
+BACKUP_CONTROLS = ("llm-export", "llm-import", "llm-reset")
 
 
 class DocumentParser(HTMLParser):
@@ -79,16 +94,41 @@ class DocumentParser(HTMLParser):
         self.source_panels: list[str] = []
         self.source_page_links: list[str] = []
         self.github_links: list[str] = []
+        # The loop: the bands (one list of (step, state) per ol.nb-steps), whether the first one follows the H1,
+        # the panels' runnable files, the self-check and note markers, and the record's backup controls.
+        self.steps_bands: list[list[tuple[str, str]]] = []
+        self.band_follows_h1 = False
+        self._expect_band = False
+        self._inside_band = False
+        self.run_paths: list[str] = []
+        self.quiz_markers: list[str] = []
+        self.note_markers: list[str] = []
+        self.control_ids: set[str] = set()
 
     def handle_starttag(
         self, tag: str, attrs: list[tuple[str, str | None]]
     ) -> None:
         values = {name: value or "" for name, value in attrs}
         classes = values.get("class", "").split()
+        if self._expect_band:
+            self.band_follows_h1 = tag == "ol" and "nb-steps" in classes
+            self._expect_band = False
+        if tag == "ol" and "nb-steps" in classes:
+            self.steps_bands.append([])
+            self._inside_band = True
+        if tag == "li" and self._inside_band and "data-step" in values:
+            self.steps_bands[-1].append((values["data-step"], values.get("data-state", "")))
+        if "llm-quiz" in classes:
+            self.quiz_markers.append(values.get("data-chapter", ""))
+        if "llm-notepad" in classes:
+            self.note_markers.append(values.get("data-chapter", ""))
+        if values.get("id") in BACKUP_CONTROLS:
+            self.control_ids.add(values["id"])
         if tag == "noscript":
             self._inside_noscript = True
         if "llm-source" in classes and values.get("data-source"):
             self.source_panels.extend(values["data-source"].split())
+            self.run_paths.extend(values.get("data-run", "").split())
         if tag == "a" and values.get("href"):
             href = values["href"]
             if href.startswith(REPOSITORY_URL) and not self._inside_noscript:
@@ -108,7 +148,7 @@ class DocumentParser(HTMLParser):
             self.palette_controls += 1
         if "nb-entry" in classes:
             self.record_entries += 1
-            if "aria-current" in values or values.get("data-record") == "done":
+            if "aria-current" in values or values.get("data-record"):
                 self.stopped_marks += 1
         if "nb-stopped" in classes:
             self.stopped_marks += 1
@@ -140,6 +180,10 @@ class DocumentParser(HTMLParser):
             self._inside_head = False
         elif tag == "noscript":
             self._inside_noscript = False
+        elif tag == "h1":
+            self._expect_band = True
+        elif tag == "ol":
+            self._inside_band = False
 
     def handle_data(self, data: str) -> None:
         if self._inside_title:
@@ -194,15 +238,19 @@ def notebook_errors(relative_page: Path, parser: DocumentParser) -> list[str]:
         errors.append(f"expected one running head in {relative_page}, found {parser.running_heads}")
     if parser.palette_controls:
         errors.append(f"Material's palette toggle is back in {relative_page}; the kit's 白天/晚上 is the one control")
-    # The site keeps no learning record, so nothing may claim one.
+    # The learning record lives in the reader's browser: the static page shows no stopped or done mark (script
+    # fills data-record from the record), and the continue link offers chapter 00 until script moves it.
     if parser.stopped_marks:
-        errors.append(f"{relative_page} shows a stopped or done mark, but the site keeps no record")
+        errors.append(f"{relative_page} shows a stopped or done mark in the static page; only script may set one")
 
     if relative_page == Path("index.html"):
         if len(parser.continue_links) != 1:
             errors.append("the opening screen needs exactly one continue link")
         elif "00_" not in unquote(parser.continue_links[0]):
             errors.append("with no record, the continue link must offer chapter 00")
+        for control in BACKUP_CONTROLS:
+            if control not in parser.control_ids:
+                errors.append(f"the opening screen is missing the record control #{control}")
         if parser.record_entries != CHAPTER_COUNT:
             errors.append(
                 f"expected {CHAPTER_COUNT} chapter rows on the opening screen, found {parser.record_entries}"
@@ -271,10 +319,68 @@ def source_errors(relative_page: Path, parser: DocumentParser, bundled: set[str]
     return errors
 
 
+def loop_errors(relative_page: Path, parser: DocumentParser) -> list[str]:
+    """Check one page against the loop: a chapter page carries one band of the five steps under its title, all
+    pending or none in the static page, a self-check and a note marker for its own number, and only runnable
+    scripts in data-run; every other page carries none of these."""
+
+    errors: list[str] = []
+    chapter = parser.meta.get("llm-chapter", "")
+    if not chapter:
+        if parser.steps_bands:
+            errors.append(f"{relative_page} carries a loop band but is not a chapter page")
+        if parser.quiz_markers or parser.note_markers:
+            errors.append(f"{relative_page} carries a self-check or note marker but is not a chapter page")
+        return errors
+
+    if len(parser.steps_bands) != 1:
+        errors.append(f"expected one loop band on {relative_page}, found {len(parser.steps_bands)}")
+        return errors
+    if not parser.band_follows_h1:
+        errors.append(f"the loop band on {relative_page} must follow the H1")
+    band = parser.steps_bands[0]
+    if tuple(step for step, _ in band) != LOOP_STEPS:
+        errors.append(f"the loop band on {relative_page} must list {', '.join(LOOP_STEPS)} in that order")
+        return errors
+    states = dict(band)
+    has_panel = bool(parser.source_panels)
+    can_run = bool(parser.run_paths)
+    expected = {
+        "read": "pending",
+        "code": "pending" if has_panel else "none",
+        "run": "pending" if can_run else "none",
+        "quiz": "pending",
+        "note": "pending",
+    }
+    for step, state in expected.items():
+        if states[step] != state:
+            errors.append(f"the {step} step on {relative_page} must be {state} in the static page, found {states[step]!r}")
+    if parser.quiz_markers != [chapter]:
+        errors.append(f"{relative_page} needs one self-check marker for chapter {chapter}, found {parser.quiz_markers}")
+    if parser.note_markers != [chapter]:
+        errors.append(f"{relative_page} needs one note marker for chapter {chapter}, found {parser.note_markers}")
+    for path in parser.run_paths:
+        if path not in parser.source_panels:
+            errors.append(f"{relative_page} marks a file runnable that its panel does not show: {path}")
+        if path not in BROWSER_RUNNABLE:
+            errors.append(f"{relative_page} marks a file runnable that the browser cannot run: {path}")
+    return errors
+
+
 def verify_site(site_root: Path) -> list[str]:
     errors: list[str] = []
     bundled, bundle_errors = load_source_bundle(site_root)
     errors.extend(bundle_errors)
+    chapter_pages = 0
+    runnable_paths: set[str] = set()
+    for browser_file in BROWSER_FILES:
+        if not (site_root / browser_file).is_file():
+            errors.append(f"missing browser-side file for the runs: {browser_file}")
+    common = site_root / BROWSER_FILES[0]
+    if common.is_file():
+        imports = [line for line in common.read_text(encoding="utf-8").splitlines() if line.startswith(("import ", "from "))]
+        if any("torch" in line for line in imports):
+            errors.append("the browser _common.py must not import torch")
     required_files = (
         site_root / "index.html",
         site_root / "404.html",
@@ -336,6 +442,10 @@ def verify_site(site_root: Path) -> list[str]:
 
         errors.extend(notebook_errors(relative_page, parser))
         errors.extend(source_errors(relative_page, parser, bundled))
+        errors.extend(loop_errors(relative_page, parser))
+        if parser.meta.get("llm-chapter"):
+            chapter_pages += 1
+            runnable_paths.update(parser.run_paths)
 
         if relative_page == Path(SOURCE_PAGE) / "index.html" and "noindex" not in parser.meta.get("robots", ""):
             errors.append("the 源码 page must be marked noindex: its content comes from the query string")
@@ -351,6 +461,14 @@ def verify_site(site_root: Path) -> list[str]:
                 errors.append(
                     f"broken local link in {relative_page}: {raw_url}"
                 )
+
+    if chapter_pages != CHAPTER_COUNT:
+        errors.append(f"expected {CHAPTER_COUNT} chapter pages with a loop band, found {chapter_pages}")
+    if runnable_paths != BROWSER_RUNNABLE:
+        errors.append(
+            "the files marked runnable in the browser must be exactly "
+            f"{sorted(BROWSER_RUNNABLE)}, found {sorted(runnable_paths)}"
+        )
 
     inspectable_suffixes = {".css", ".html", ".js", ".json", ".txt", ".xml"}
     for file_path in site_root.rglob("*"):

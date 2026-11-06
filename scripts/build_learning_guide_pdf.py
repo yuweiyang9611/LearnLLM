@@ -902,6 +902,13 @@ def parse_markdown(
             index += 1
             continue
 
+        # An HTML block (the site's source panel, self-check and note markers) belongs to the web page: the PDF
+        # skips it up to the next blank line instead of printing the tags.
+        if re.match(r"^<(?:[a-zA-Z][\w-]*|/[a-zA-Z][\w-]*|!--)", stripped):
+            while index < len(lines) and lines[index].strip():
+                index += 1
+            continue
+
         fence = re.match(r"^```\s*([^\s`]*)", stripped)
         if fence:
             language = fence.group(1).strip() or "text"

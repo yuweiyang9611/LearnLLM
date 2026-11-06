@@ -46,7 +46,7 @@ RAG 通常不更新模型参数。它把外部资料放入上下文，改善可�
 
 实验 09 和第 9 节的实验 11 全文，和仓库同一个提交：
 
-<div class="nb-code llm-source" data-source="experiments/09_tiny_rag.py experiments/11_local_agent.py">
+<div class="nb-code llm-source" id="llm-source" data-run="experiments/09_tiny_rag.py experiments/11_local_agent.py" data-source="experiments/09_tiny_rag.py experiments/11_local_agent.py">
 <div class="nb-code-tabs" role="tablist" aria-label="文件"><span class="nb-code-tab" aria-selected="true">09_tiny_rag.py</span><span class="nb-code-tab" aria-selected="false">11_local_agent.py</span></div>
 <noscript><p class="nb-code-status">看代码需要 JavaScript。源文件在 GitHub：<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/09_tiny_rag.py">experiments/09_tiny_rag.py</a>、<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/11_local_agent.py">experiments/11_local_agent.py</a>。</p></noscript>
 </div>
@@ -154,6 +154,8 @@ k 越大，Recall 往往越高，但交给模型的无关上下文也可能更�
 
 一次只改变一个设置，并保存相同查询集上的结果。
 
+<div class="llm-quiz" id="llm-quiz" data-chapter="07"></div>
+
 ## 11. 出门测
 
 1. Recall@5 很高但答案忠实度低，下一步应检查哪一层？
@@ -161,3 +163,5 @@ k 越大，Recall 往往越高，但交给模型的无关上下文也可能更�
 3. 一个 Agent 可以执行删除操作时，哪些步骤必须由确定性程序而不是模型保证？
 4. 设计一个“答案恰好正确但证据错误”的反例，并说明为何不能算 RAG 成功。
 5. 为什么“模型承诺最多调用三次工具”不能替代控制器的 `max_steps`？
+
+<div class="llm-notepad" id="llm-notepad" data-chapter="07"></div>

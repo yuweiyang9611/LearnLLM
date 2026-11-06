@@ -460,6 +460,24 @@ input[type="checkbox"]:disabled { border: 1px dashed var(--nb-rule-strong); curs
 .nb-chip[aria-pressed="true"] { border-color: transparent; background: var(--nb-hue-fill, var(--nb-ink-fill)); color: var(--nb-on-fill); font-weight: 600; }
 .nb-chip-count { opacity: .8; font-variant-numeric: tabular-nums; }
 
+/* Loop band (2026-11-06): the steps of one lesson in order, as numbered pills: 读, 看代码, 跑, 自测, 记一笔, or what the site has.
+   data-state on each step: done is a green fill, now is the one to continue (outlined bold, says 停在这里), pending is outlined,
+   none is dashed because this lesson has no such step. On a fill, .nb-steps--on-fill takes the on-fill palette like .nb-bar--on-fill. */
+.nb-steps { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0; padding: 0; list-style: none; counter-reset: nb-step; }
+.nb-steps li { display: inline-flex; align-items: center; gap: .4rem; min-height: 2rem; padding: 0 .75rem; border: 1px solid var(--nb-rule-strong); border-radius: 999px; font-size: .875rem; line-height: 1; }
+.nb-steps li::before { counter-increment: nb-step; content: counter(nb-step); font-variant-numeric: tabular-nums; opacity: .85; }
+.nb-steps a { color: inherit; text-decoration: none; }
+.nb-steps a:hover { text-decoration: underline; }
+.nb-steps li[data-state="done"] { border-color: var(--nb-green-fill); background: var(--nb-green-fill); color: var(--nb-on-fill); font-weight: 600; }
+.nb-steps li[data-state="done"]::after { content: "完成"; font-size: .8125rem; font-weight: 400; }
+.nb-steps li[data-state="now"] { border-color: var(--nb-ink); font-weight: 600; }
+.nb-steps li[data-state="now"]::after { content: "停在这里"; font-size: .8125rem; font-weight: 400; }
+.nb-steps li[data-state="none"] { border-style: dashed; opacity: .7; }
+.nb-steps-count { font-size: .8125rem; opacity: .85; font-variant-numeric: tabular-nums; }
+.nb-steps--on-fill li { border-color: rgba(255, 255, 255, .5); }
+.nb-steps--on-fill li[data-state="done"] { border-color: var(--nb-on-fill); background: var(--nb-on-fill); color: var(--nb-hue-fill, var(--nb-ink-fill)); }
+.nb-steps--on-fill li[data-state="now"] { border-color: var(--nb-on-fill); background: rgba(255, 255, 255, .18); }
+
 /* Stat: a figure over its label, with a hue rule above. */
 .nb-stat { min-width: 0; padding-top: .5rem; border-top: 3px solid var(--nb-hue-fill, var(--nb-rule-strong)); }
 .nb-stat b { display: block; font-size: 1.5rem; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
