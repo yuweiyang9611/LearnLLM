@@ -17,7 +17,7 @@ Bigram 只能看前一个 token。现在我们希望当前位置能读取更长�
 
 对应实验，和仓库同一个提交，在这里就能整篇读：
 
-<div class="nb-code llm-source" data-source="experiments/04_attention.py experiments/05_transformer_block.py">
+<div class="nb-code llm-source" id="llm-source" data-source="experiments/04_attention.py experiments/05_transformer_block.py">
 <div class="nb-code-tabs" role="tablist" aria-label="文件"><span class="nb-code-tab" aria-selected="true">04_attention.py</span><span class="nb-code-tab" aria-selected="false">05_transformer_block.py</span></div>
 <noscript><p class="nb-code-status">看代码需要 JavaScript。源文件在 GitHub：<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/04_attention.py">experiments/04_attention.py</a>、<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/05_transformer_block.py">experiments/05_transformer_block.py</a>。</p></noscript>
 </div>
@@ -525,6 +525,8 @@ Q @ K.transpose(-2,-1)
 5. 堆叠两个 Block，验证形状保持 `(B,T,D)`，并检查所有层都获得梯度。
 6. 估算 self-attention 的 scores 张量元素数 `B*H*T*T`。当 `T` 翻倍时，元素数变为多少倍？这解释了长上下文的主要成本之一。
 
+<div class="llm-quiz" id="llm-quiz" data-chapter="03"></div>
+
 ## 掌握检查
 
 - [ ] 我能用“检索、匹配、取回”解释 Q、K、V，同时知道这只是直觉类比。
@@ -540,3 +542,5 @@ Q @ K.transpose(-2,-1)
 - [ ] 我能说明 Encoder 双向注意力、Decoder 因果注意力和 cross-attention 的差别。
 
 完成本章后，你已经从 token id 走到了一个可运行的 Decoder Transformer Block。下一阶段只需加入数据切片、语言模型头、优化循环与生成策略，就能组成一个真正可训练的 Mini-LLM。
+
+<div class="llm-notepad" id="llm-notepad" data-chapter="03"></div>

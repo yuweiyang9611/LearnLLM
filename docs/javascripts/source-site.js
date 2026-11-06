@@ -57,6 +57,9 @@
         };
         follow(panel.current() ?? paths[0]);
         root.querySelector(".nb-code-tabs").addEventListener("click", () => follow(panel.current()));
+        // The run controls and the learning record attach to the panel from here (run-site.js, loop-site.js).
+        root.llmPanel = panel;
+        root.dispatchEvent(new CustomEvent("llm-source-panel", { bubbles: true, detail: { panel, bundleBase, bundled } }));
       }
     }).catch((error) => {
       for (const root of roots) {

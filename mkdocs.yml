@@ -101,6 +101,14 @@ extra_javascript:
   - javascripts/code-colors.js
   - javascripts/source-panel.js
   - javascripts/source-site.js
+  # The loop: the quiz bank before the record (a passed quiz is tied to the bank's revision), the record before
+  # the scripts that read it; python-runner.js before run-site.js, which attaches 运行 to the source panels.
+  - javascripts/quiz-bank.js
+  - javascripts/progress.js
+  - javascripts/python-runner.js
+  - javascripts/run-site.js
+  - javascripts/quiz.js
+  - javascripts/loop-site.js
   - javascripts/mathjax.js
   - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
 

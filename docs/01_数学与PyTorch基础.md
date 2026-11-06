@@ -18,7 +18,7 @@
 
 对应实验，和仓库同一个提交，在这里就能整篇读：
 
-<div class="nb-code llm-source" data-source="experiments/01_math_foundations.py">
+<div class="nb-code llm-source" id="llm-source" data-source="experiments/01_math_foundations.py">
 <div class="nb-code-tabs" role="tablist" aria-label="文件"><span class="nb-code-tab" aria-selected="true">01_math_foundations.py</span></div>
 <noscript><p class="nb-code-status">看代码需要 JavaScript。源文件在 GitHub：<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/01_math_foundations.py">experiments/01_math_foundations.py</a>。</p></noscript>
 </div>
@@ -364,6 +364,8 @@ print(probs.sum(dim=-1))
 4. 假设模型对 `V` 个 token 给出完全均匀的概率，推导单位置交叉熵为什么等于 `ln(V)`。这个结果将在训练 Mini-LLM 时成为“随机基线”。
 5. 比较把 batch 中所有位置求平均与只对非 padding 位置求平均的差异。
 
+<div class="llm-quiz" id="llm-quiz" data-chapter="01"></div>
+
 ## 掌握检查
 
 - [ ] 我能区分 logits、概率与 loss。
@@ -376,3 +378,5 @@ print(probs.sum(dim=-1))
 - [ ] 我能解释 `zero_grad -> backward -> step` 的顺序。
 
 完成后进入 [02 Tokenizer 与语言模型](./02_Tokenizer与语言模型.md)，把本章的概率工具放到真正的文本序列上。
+
+<div class="llm-notepad" id="llm-notepad" data-chapter="01"></div>

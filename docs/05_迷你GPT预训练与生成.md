@@ -43,7 +43,7 @@
 
 训练脚本和第 6 节的生成脚本全文，和仓库同一个提交：
 
-<div class="nb-code llm-source" data-source="experiments/06_train_tiny_gpt.py experiments/07_generate.py">
+<div class="nb-code llm-source" id="llm-source" data-source="experiments/06_train_tiny_gpt.py experiments/07_generate.py">
 <div class="nb-code-tabs" role="tablist" aria-label="文件"><span class="nb-code-tab" aria-selected="true">06_train_tiny_gpt.py</span><span class="nb-code-tab" aria-selected="false">07_generate.py</span></div>
 <noscript><p class="nb-code-status">看代码需要 JavaScript。源文件在 GitHub：<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/06_train_tiny_gpt.py">experiments/06_train_tiny_gpt.py</a>、<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/07_generate.py">experiments/07_generate.py</a>。</p></noscript>
 </div>
@@ -213,6 +213,8 @@ p_i=\operatorname{softmax}(z_i/\tau)
 4. 为什么“训练集 loss 很低”不能证明模型理解语言？
 5. 为什么实验 10 必须复用实验 06 的 Tokenizer 和 `block_size`？
 
+<div class="llm-quiz" id="llm-quiz" data-chapter="05"></div>
+
 ## 版本 2：运行记录、EOS 和配置消融
 
 每次运行在独立目录保存 `pretraining.json`、`pretraining.csv`、`base.pt`、`corpus.txt` 与 `plots/`。旧版 checkpoint 被明确拒绝，请重跑实验 06→10；不会删除旧文件。默认 `block_size` 至少为 48，且能容纳演示集的完整答案与 EOS，目前为 49。
@@ -222,3 +224,5 @@ p_i=\operatorname{softmax}(z_i/\tau)
 EOS 是“答案已结束”的独立 token。SFT 把它作为最后一个监督目标；生成达到 EOS 就停止，不必一直输出到 `--tokens` 上限。批次中已结束的行用 EOS 填充，显示文本时跳过特殊 token。
 
 `status` 描述执行结果，`quality_status` 描述效果。loss 下降不足仍保存完整记录；只有加上 `--strict-checks` 才会在保存后返回退出码 2。运行异常返回 1，中断返回 130，保留已经完成的训练步；不承诺强制杀进程后的完整恢复。图表从 CSV 重建，绘图失败独立记录，不覆盖训练结果。
+
+<div class="llm-notepad" id="llm-notepad" data-chapter="05"></div>

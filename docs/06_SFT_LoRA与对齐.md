@@ -23,7 +23,7 @@ $SftRun = ".\outputs\sft\lesson-$(Get-Date -Format yyyyMMdd-HHmmssfff)"
 
 实验 10 和第 2 节的实验 08 全文，和仓库同一个提交：
 
-<div class="nb-code llm-source" data-source="experiments/10_sft_tiny_gpt.py experiments/08_lora.py">
+<div class="nb-code llm-source" id="llm-source" data-source="experiments/10_sft_tiny_gpt.py experiments/08_lora.py">
 <div class="nb-code-tabs" role="tablist" aria-label="文件"><span class="nb-code-tab" aria-selected="true">10_sft_tiny_gpt.py</span><span class="nb-code-tab" aria-selected="false">08_lora.py</span></div>
 <noscript><p class="nb-code-status">看代码需要 JavaScript。源文件在 GitHub：<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/10_sft_tiny_gpt.py">experiments/10_sft_tiny_gpt.py</a>、<a href="https://github.com/yuweiyang9611/LearnLLM/blob/main/experiments/08_lora.py">experiments/08_lora.py</a>。</p></noscript>
 </div>
@@ -246,6 +246,8 @@ rejected: 只说“它让模型更聪明”
 4. 为什么低秩适配成功不等于解决灾难性遗忘、事实错误或安全问题？
 5. 为什么 Full SFT 与 LoRA-SFT 必须各自从同一个 base checkpoint 分叉？
 
+<div class="llm-quiz" id="llm-quiz" data-chapter="06"></div>
+
 ## 版本 2：失败记录和扩展评测
 
 训练过程逐步保存历史，各分支及 seed 单独保存产物。`status` 区分 running/completed/failed/interrupted；`quality_status` 与逐项 `checks` 记录下降幅度、阈值、实际值和原因。效果不佳不再触发中途退出，所有 seed 继续完成；`--strict-checks` 在写完记录后返回 2。模型执行错误和冻结约束破坏属于失败，返回 1；用户中断返回 130。部分分支保留历史，但不会进入已完成分支的均值统计。`completed_seeds` 给出完整完成的 seed，单个指标的 `runs` 给出实际分母。
@@ -265,3 +267,5 @@ rejected: 只说“它让模型更聪明”
 ```powershell
 .\.venv\Scripts\python.exe .\scripts\plot_experiments.py $SftRun --output-dir .\outputs\plots\lesson
 ```
+
+<div class="llm-notepad" id="llm-notepad" data-chapter="06"></div>

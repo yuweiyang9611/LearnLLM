@@ -12,7 +12,7 @@ hide:
 
 # 从零学习大语言模型 { #token-transformer-llm }
 
-九章配十二个本地实验，在 Windows 和 CPU 上亲手实现并验证一个微型大语言模型。本站不记录进度，读到哪一章记在自己的[实验记录](实验记录模板.md)里。
+九章配十二个本地实验，在 Windows 和 CPU 上亲手实现并验证一个微型大语言模型。每章五步：读、看代码、跑、自测、记一笔；做到哪一步记在这台浏览器里，可以[备份成 JSON](#llm-backup)。
 { .llm-masthead-note }
 
 </div>
@@ -209,7 +209,19 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1
 <ul class="llm-notes" markdown>
 <li markdown>**先写预测，再按 Enter。**写下 tensor 的 shape、loss 会升还是降、mask 后哪一格必须为 0。代码跑通只是开始，能解释结果才算学会。</li>
 <li markdown><strong class="llm-warn">注意：</strong>实验 10 依赖实验 06。先运行实验 06 生成 `checkpoints/tiny_gpt.pt`，实验 10 会复用其中的预训练权重、config 和冻结的 Tokenizer。分支怎样比较、指标怎样读，见[第 06 章](06_SFT_LoRA与对齐.md)。</li>
-<li markdown>**网页只负责阅读。**网站提供全文搜索、公式渲染和章节导航；改参数、训练模型或保存结果，请克隆仓库，在项目的 `.venv` 中运行。</li>
+<li markdown>**网页上能跑的只有三个实验。**第 02 章的实验 03、第 07 章的实验 09 和 11 不用 torch，面板里的「运行」把它们交给浏览器里的 Python 运行时；其余实验要 PyTorch，面板写着「需要本机」。训练模型或保存结果，请克隆仓库，在项目的 `.venv` 中运行。</li>
 </ul>
+
+</section>
+
+<section class="llm-section" aria-labelledby="llm-backup-title" markdown>
+
+## 学习记录 { #llm-backup }
+
+<div class="llm-backup" id="llm-backup-panel" markdown>
+<p class="llm-note" id="llm-backup-title" markdown="span">每章的五步做到哪里、自测和笔记，都只存在这台浏览器里。换电脑或清缓存前先备份；恢复会覆盖这里的记录。</p>
+<p class="llm-backup-actions"><button type="button" class="nb-button" id="llm-export" disabled>备份 JSON</button><label class="nb-button" for="llm-import" aria-disabled="true">恢复<input type="file" id="llm-import" accept="application/json,.json" disabled></label><button type="button" class="nb-button" id="llm-reset" disabled>清空记录</button></p>
+<p class="llm-backup-status" role="status" aria-live="polite"></p>
+</div>
 
 </section>

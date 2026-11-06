@@ -18,8 +18,10 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_URL = "https://github.com/yuweiyang9611/LearnLLM"
-# The learning folders. Build output, caches and packaging metadata are never source a reader learns from.
-SOURCE_ROOTS = ("src", "experiments", "examples")
+# The learning folders, and data/ for the corpus and documents the experiments read (the browser runs need them;
+# the .jsonl instruction sets are not source and are left out by extension). Build output, caches and packaging
+# metadata are never source a reader learns from.
+SOURCE_ROOTS = ("src", "experiments", "examples", "data")
 SOURCE_EXTENSIONS = frozenset(
     {".py", ".md", ".json", ".yml", ".yaml", ".toml", ".cfg", ".ini", ".txt", ".csv", ".ps1", ".sh"}
 )
